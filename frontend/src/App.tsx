@@ -1,5 +1,16 @@
+import React from "react";
+import {BrowserRouter as Router, Routes, Route} from "react-router-dom";
 import './App.css';
+import Home from "./components/routes/Home/Home";
 
-export default function App() {
-  return <h1 className="bg-amber-400">Hello from React frontend!</h1>;
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+      </Routes>
+    </Router>
+  );
 }
+
+export default App;
