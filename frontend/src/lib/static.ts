@@ -125,3 +125,36 @@ export const testingTasks = [
         assignedTo: "Unassigned"
     }
 ]
+
+export const testingComments = [
+  {
+    id: 1,
+    text: "Make sure to update the API validation before deployment.",
+    author: "Rahul",
+    createdAt: new Date("2026-03-20")
+  },
+  {
+    id: 2,
+    text: "UI looks good but spacing needs improvement on mobile view.",
+    author: "Priya",
+    createdAt: new Date("2026-03-21")
+  },
+  {
+    id: 3,
+    text: "We should add loading states for better UX.",
+    author: "Amit",
+    createdAt: new Date("2026-03-22")
+  },
+  {
+    id: 4,
+    text: "Database indexes might be needed for faster queries.",
+    author: "Neha",
+    createdAt: new Date("2026-03-23")
+  },
+  {
+    id: 5,
+    text: "Consider adding unit tests for this module.",
+    author: "Vikram",
+    createdAt: new Date("2026-03-24")
+  }
+];

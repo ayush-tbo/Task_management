@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Logs } from "lucide-react";
+import { LayoutDashboard, Logs, PenBox } from "lucide-react";
 import Profile from "./Profile";
 
 function Header() {
@@ -18,8 +18,13 @@ function Header() {
                         </Button>
                     </Link>
                     <Link to="/activity" className="flex items-center gap-2">
-                        <Button>
+                        <Button variant="outline">
                             <Logs size={18} /><span className="hidden md:inline">Activity Log</span>
+                        </Button>
+                    </Link>
+                    <Link to="/addEdit" className="flex items-center gap-2">
+                        <Button>
+                            <PenBox size={18} /><span className="hidden md:inline">Add Task</span>
                         </Button>
                     </Link>
                     <Profile />
