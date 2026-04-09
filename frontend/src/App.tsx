@@ -6,6 +6,10 @@ import Dashboard from "./components/routes/Dashboard/Dashboard";
 import Project from "./components/routes/Project/Project";
 import Task from "./components/routes/Task/Task";
 import AddEditTask from "./components/routes/AddEditTask/AddEditTask";
+import PageNotFound from "./components/routes/Authentication/PageNotFound";
+import Login from "./components/routes/Authentication/Login";
+import Register from "./components/routes/Authentication/Register";
+import ActivityLog from "./components/routes/ActivityLog/ActivityLog";
 
 function App() {
   return (
@@ -16,6 +20,10 @@ function App() {
         <Route path="/project/:id" element={<Project />} />
         <Route path="/task/:id" element={<Task />} />
         <Route path="/addEdit" element={<AddEditTask />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/activity" element={<ActivityLog />} />
+        <Route path="*" element={<PageNotFound />} />
       </Routes>
     </Router>
   );

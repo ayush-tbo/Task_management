@@ -158,3 +158,86 @@ export const testingComments = [
     createdAt: new Date("2026-03-24")
   }
 ];
+
+export const testingActivity = [
+  {
+    id: 1,
+    user: "Rahul Sharma",
+    activity: "created",
+    taskName: "Implement authentication",
+    projectName: "PennyPilot",
+    date: new Date("2026-03-24")
+  },
+  {
+    id: 2,
+    user: "Priya Patel",
+    activity: "edited",
+    taskName: "Design dashboard UI",
+    projectName: "PennyPilot",
+    date: new Date("2026-03-23")
+  },
+  {
+    id: 3,
+    user: "Amit Verma",
+    activity: "completed",
+    taskName: "Setup PostgreSQL database",
+    projectName: "PennyPilot",
+    date: new Date("2026-03-22")
+  },
+  {
+    id: 4,
+    user: "Neha Singh",
+    activity: "deleted",
+    taskName: "Old API testing task",
+    projectName: "PennyPilot",
+    date: new Date("2026-03-21")
+  },
+  {
+    id: 5,
+    user: "Vikram Joshi",
+    activity: "assigned",
+    taskName: "Fix payment integration bug",
+    projectName: "Finance Tracker",
+    date: new Date("2026-03-20")
+  },
+  {
+    id: 6,
+    user: "Rahul Sharma",
+    activity: "commented",
+    taskName: "Fix payment integration bug",
+    projectName: "Finance Tracker",
+    date: new Date("2026-03-19")
+  },
+  {
+    id: 7,
+    user: "Priya Patel",
+    activity: "moved",
+    taskName: "Implement email notifications",
+    projectName: "PennyPilot",
+    date: new Date("2026-03-18")
+  },
+  {
+    id: 8,
+    user: "Amit Verma",
+    activity: "completed",
+    taskName: "Fix login redirect issue",
+    projectName: "Finance Tracker",
+    date: new Date("2026-03-17")
+  },
+  {
+    id: 9,
+    user: "Neha Singh",
+    activity: "updated deadline",
+    taskName: "Optimize backend queries",
+    projectName: "PennyPilot",
+    date: new Date("2026-03-16")
+  },
+  {
+    id: 10,
+    user: "Vikram Joshi",
+    activity: "updated priority",
+    taskName: "Prepare project documentation",
+    projectName: "Finance Tracker",
+    date: new Date("2026-03-15")
+  }
+]
