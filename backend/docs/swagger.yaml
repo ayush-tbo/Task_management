@@ -1,0 +1,1645 @@
+openapi: 3.0.3
+info:
+  title: Task Manager API
+  description: |
+    Backend API for the Task Manager application.
+    Authentication is handled on the frontend (Google, GitHub, Microsoft, LinkedIn OAuth).
+    The backend expects a valid JWT Bearer token in the Authorization header.
+  version: 1.0.0
+  contact:
+    name: Task Manager Team
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Users
+    description: User management and invitations
+  - name: Projects
+    description: Project/Board CRUD and membership
+  - name: Tasks
+    description: Task CRUD with filters, assignment, and status management
+  - name: Comments
+    description: Comments on tasks (separate collection)
+  - name: Labels
+    description: Project-scoped labels
+  - name: Activity
+    description: Activity logs for projects and tasks
+  - name: Sprints
+    description: Sprint management (period, attributes)
+  - name: Notifications
+    description: Reminders and alerts
+
+paths:
+  # ─── Users ──────────────────────────────────────────────
+  /api/users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [Users]
+      summary: Update current user profile
+      operationId: updateCurrentUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/users:
+    get:
+      tags: [Users]
+      summary: List / search users
+      operationId: listUsers
+      parameters:
+        - name: q
+          in: query
+          description: Search by name or email
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+
+  /api/users/invite:
+    post:
+      tags: [Users]
+      summary: Invite a user by email
+      operationId: inviteUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteUserRequest"
+      responses:
+        "201":
+          description: Invitation sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── Projects ───────────────────────────────────────────
+  /api/projects:
+    get:
+      tags: [Projects]
+      summary: List projects for current user
+      operationId: listProjects
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated project list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectListResponse"
+    post:
+      tags: [Projects]
+      summary: Create a new project/board
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectRequest"
+      responses:
+        "201":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/projects/{projectId}:
+    get:
+      tags: [Projects]
+      summary: Get project by ID
+      operationId: getProject
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      responses:
+        "200":
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Projects]
+      summary: Update a project
+      operationId: updateProject
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectRequest"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Projects]
+      summary: Delete a project
+      operationId: deleteProject
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      responses:
+        "204":
+          description: Project deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/projects/{projectId}/members:
+    get:
+      tags: [Projects]
+      summary: List project members
+      operationId: listProjectMembers
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      responses:
+        "200":
+          description: Member list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectMember"
+    post:
+      tags: [Projects]
+      summary: Add a member to the project
+      operationId: addProjectMember
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddMemberRequest"
+      responses:
+        "201":
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMember"
+        "409":
+          description: Already a member
+
+  /api/projects/{projectId}/members/{userId}:
+    delete:
+      tags: [Projects]
+      summary: Remove a member from the project
+      operationId: removeProjectMember
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Member removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Tasks ─────────────────────────────────────────────
+  /api/projects/{projectId}/tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks with filters
+      operationId: listTasks
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+        - name: status
+          in: query
+          description: "Filter by status (comma-separated)"
+          schema:
+            type: string
+            enum: [todo, in_progress, staging_review, done]
+        - name: priority
+          in: query
+          description: "Filter by priority"
+          schema:
+            type: string
+            enum: [p1, p2, p3, p4]
+        - name: assignee_id
+          in: query
+          description: Filter by assignee user ID
+          schema:
+            type: string
+        - name: reporter_id
+          in: query
+          description: Filter by reporter user ID
+          schema:
+            type: string
+        - name: label_ids
+          in: query
+          description: "Filter by label IDs (comma-separated)"
+          schema:
+            type: string
+        - name: due_before
+          in: query
+          description: Tasks due before this date (RFC 3339)
+          schema:
+            type: string
+            format: date-time
+        - name: due_after
+          in: query
+          description: Tasks due after this date (RFC 3339)
+          schema:
+            type: string
+            format: date-time
+        - name: is_past_due
+          in: query
+          description: Filter tasks past their due date
+          schema:
+            type: boolean
+        - name: sprint_id
+          in: query
+          description: Filter by sprint ID
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          description: "Sort field"
+          schema:
+            type: string
+            enum: [due_date, priority, created_at, updated_at]
+            default: created_at
+        - name: sort_order
+          in: query
+          description: "Sort direction"
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated task list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+    post:
+      tags: [Tasks]
+      summary: Create a new task
+      operationId: createTask
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/tasks/{taskId}:
+    get:
+      tags: [Tasks]
+      summary: Get task by ID
+      operationId: getTask
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      responses:
+        "200":
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Tasks]
+      summary: Update a task
+      operationId: updateTask
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskRequest"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Tasks]
+      summary: Delete a task
+      operationId: deleteTask
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      responses:
+        "204":
+          description: Task deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/tasks/{taskId}/assign:
+    put:
+      tags: [Tasks]
+      summary: Assign task to a user
+      operationId: assignTask
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignTaskRequest"
+      responses:
+        "200":
+          description: Task assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/tasks/{taskId}/status:
+    put:
+      tags: [Tasks]
+      summary: Update task status
+      operationId: updateTaskStatus
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatusRequest"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/tasks/{taskId}/time:
+    get:
+      tags: [Tasks]
+      summary: Get time tracking info for a task
+      operationId: getTaskTimeTracking
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      responses:
+        "200":
+          description: Time tracking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimeTracking"
+    put:
+      tags: [Tasks]
+      summary: Log time against a task
+      operationId: logTaskTime
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogTimeRequest"
+      responses:
+        "200":
+          description: Time logged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimeTracking"
+
+  /api/tasks/my:
+    get:
+      tags: [Tasks]
+      summary: Get tasks assigned to the current user across all projects
+      operationId: getMyTasks
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [todo, in_progress, staging_review, done]
+        - name: is_past_due
+          in: query
+          schema:
+            type: boolean
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Current user's tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+
+  # ─── Comments ──────────────────────────────────────────
+  /api/tasks/{taskId}/comments:
+    get:
+      tags: [Comments]
+      summary: List comments for a task
+      operationId: listComments
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated comment list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentListResponse"
+    post:
+      tags: [Comments]
+      summary: Add a comment to a task
+      operationId: createComment
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentRequest"
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/comments/{commentId}:
+    put:
+      tags: [Comments]
+      summary: Update a comment
+      operationId: updateComment
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCommentRequest"
+      responses:
+        "200":
+          description: Updated comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Comments]
+      summary: Delete a comment
+      operationId: deleteComment
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Comment deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Labels ────────────────────────────────────────────
+  /api/projects/{projectId}/labels:
+    get:
+      tags: [Labels]
+      summary: List labels for a project
+      operationId: listLabels
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      responses:
+        "200":
+          description: Label list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Label"
+    post:
+      tags: [Labels]
+      summary: Create a label
+      operationId: createLabel
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLabelRequest"
+      responses:
+        "201":
+          description: Label created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Label"
+
+  /api/labels/{labelId}:
+    put:
+      tags: [Labels]
+      summary: Update a label
+      operationId: updateLabel
+      parameters:
+        - name: labelId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLabelRequest"
+      responses:
+        "200":
+          description: Updated label
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Label"
+    delete:
+      tags: [Labels]
+      summary: Delete a label
+      operationId: deleteLabel
+      parameters:
+        - name: labelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Label deleted
+
+  # ─── Activity Logs ─────────────────────────────────────
+  /api/projects/{projectId}/activity:
+    get:
+      tags: [Activity]
+      summary: Get activity log for a project
+      operationId: getProjectActivity
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+        - name: action
+          in: query
+          description: "Filter by action type"
+          schema:
+            type: string
+            enum:
+              - task_created
+              - task_updated
+              - task_deleted
+              - task_assigned
+              - status_changed
+              - comment_added
+              - member_added
+              - member_removed
+              - sprint_created
+              - sprint_updated
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Activity log entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityListResponse"
+
+  /api/tasks/{taskId}/activity:
+    get:
+      tags: [Activity]
+      summary: Get activity log for a specific task
+      operationId: getTaskActivity
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Task activity log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityListResponse"
+
+  # ─── Sprints ───────────────────────────────────────────
+  /api/projects/{projectId}/sprints:
+    get:
+      tags: [Sprints]
+      summary: List sprints for a project
+      operationId: listSprints
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+        - name: active
+          in: query
+          description: Filter only active sprints
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Sprint list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sprint"
+    post:
+      tags: [Sprints]
+      summary: Create a sprint
+      operationId: createSprint
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSprintRequest"
+      responses:
+        "201":
+          description: Sprint created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sprint"
+
+  /api/sprints/{sprintId}:
+    get:
+      tags: [Sprints]
+      summary: Get sprint by ID
+      operationId: getSprint
+      parameters:
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Sprint details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sprint"
+    put:
+      tags: [Sprints]
+      summary: Update a sprint
+      operationId: updateSprint
+      parameters:
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSprintRequest"
+      responses:
+        "200":
+          description: Updated sprint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sprint"
+    delete:
+      tags: [Sprints]
+      summary: Delete a sprint
+      operationId: deleteSprint
+      parameters:
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Sprint deleted
+
+  /api/sprints/{sprintId}/tasks:
+    post:
+      tags: [Sprints]
+      summary: Add a task to a sprint
+      operationId: addTaskToSprint
+      parameters:
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task_id]
+              properties:
+                task_id:
+                  type: string
+      responses:
+        "200":
+          description: Task added to sprint
+    delete:
+      tags: [Sprints]
+      summary: Remove a task from a sprint
+      operationId: removeTaskFromSprint
+      parameters:
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task_id]
+              properties:
+                task_id:
+                  type: string
+      responses:
+        "204":
+          description: Task removed from sprint
+
+  # ─── Notifications ─────────────────────────────────────
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications for current user
+      operationId: listNotifications
+      parameters:
+        - name: unread_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: type
+          in: query
+          description: "Filter by notification type"
+          schema:
+            type: string
+            enum: [reminder, alert, mention, assignment]
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationListResponse"
+
+  /api/notifications/{notificationId}/read:
+    put:
+      tags: [Notifications]
+      summary: Mark a notification as read
+      operationId: markNotificationRead
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Notification marked as read
+
+  /api/notifications/read-all:
+    put:
+      tags: [Notifications]
+      summary: Mark all notifications as read
+      operationId: markAllNotificationsRead
+      responses:
+        "200":
+          description: All notifications marked as read
+
+  # ─── Charts / Views ────────────────────────────────────
+  /api/projects/{projectId}/charts/status:
+    get:
+      tags: [Projects]
+      summary: Task count grouped by status (for charts)
+      operationId: getStatusChart
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      responses:
+        "200":
+          description: Status distribution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusChart"
+
+  /api/projects/{projectId}/charts/priority:
+    get:
+      tags: [Projects]
+      summary: Task count grouped by priority (for charts)
+      operationId: getPriorityChart
+      parameters:
+        - $ref: "#/components/parameters/ProjectIdParam"
+      responses:
+        "200":
+          description: Priority distribution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriorityChart"
+
+# ─── Components ──────────────────────────────────────────
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from frontend OAuth flow
+
+  parameters:
+    ProjectIdParam:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+    TaskIdParam:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+    PageParam:
+      name: page
+      in: query
+      description: Page number (1-based)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: page_size
+      in: query
+      description: Items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    # ── User ──────────────────────────────
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "usr_abc123"
+        email:
+          type: string
+          format: email
+          example: "ayush@example.com"
+        name:
+          type: string
+          example: "Ayush"
+        avatar_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        avatar_url:
+          type: string
+          format: uri
+
+    InviteUserRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        project_id:
+          type: string
+          description: Optionally invite directly to a project
+
+    UserListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ── Project ───────────────────────────
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "prj_xyz789"
+        name:
+          type: string
+          example: "Q2 Sprint Board"
+        description:
+          type: string
+        owner_id:
+          type: string
+        member_count:
+          type: integer
+        task_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateProjectRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+
+    UpdateProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+
+    ProjectListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Project"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    ProjectMember:
+      type: object
+      properties:
+        user_id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        avatar_url:
+          type: string
+          format: uri
+        role:
+          type: string
+          enum: [owner, admin, member]
+        joined_at:
+          type: string
+          format: date-time
+
+    AddMemberRequest:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: string
+        role:
+          type: string
+          enum: [admin, member]
+          default: member
+
+    # ── Task ──────────────────────────────
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "tsk_001"
+        project_id:
+          type: string
+        title:
+          type: string
+          example: "Implement login flow"
+        description:
+          type: string
+        status:
+          type: string
+          enum: [todo, in_progress, staging_review, done]
+          example: "todo"
+        priority:
+          type: string
+          enum: [p1, p2, p3, p4]
+          description: "P1=Critical, P2=High, P3=Medium, P4=Low"
+          example: "p2"
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        is_past_due:
+          type: boolean
+          description: "Computed: true if due_date < now and status != done"
+        assignee_id:
+          type: string
+          nullable: true
+        assignee:
+          $ref: "#/components/schemas/User"
+        reporter_id:
+          type: string
+        reporter:
+          $ref: "#/components/schemas/User"
+        label_ids:
+          type: array
+          items:
+            type: string
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Label"
+        sprint_id:
+          type: string
+          nullable: true
+        comment_count:
+          type: integer
+        time_tracking:
+          $ref: "#/components/schemas/TimeTracking"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateTaskRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          maxLength: 10000
+        status:
+          type: string
+          enum: [todo, in_progress, staging_review, done]
+          default: todo
+        priority:
+          type: string
+          enum: [p1, p2, p3, p4]
+          default: p3
+        due_date:
+          type: string
+          format: date-time
+        assignee_id:
+          type: string
+        label_ids:
+          type: array
+          items:
+            type: string
+        sprint_id:
+          type: string
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          maxLength: 10000
+        status:
+          type: string
+          enum: [todo, in_progress, staging_review, done]
+        priority:
+          type: string
+          enum: [p1, p2, p3, p4]
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        assignee_id:
+          type: string
+          nullable: true
+        label_ids:
+          type: array
+          items:
+            type: string
+        sprint_id:
+          type: string
+          nullable: true
+
+    AssignTaskRequest:
+      type: object
+      required: [assignee_id]
+      properties:
+        assignee_id:
+          type: string
+
+    UpdateStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [todo, in_progress, staging_review, done]
+
+    TaskListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    TimeTracking:
+      type: object
+      properties:
+        estimated_hours:
+          type: number
+          format: float
+        logged_hours:
+          type: number
+          format: float
+        is_overdue:
+          type: boolean
+          description: "True if due_date has passed and task is not done"
+        overdue_duration:
+          type: string
+          description: "Human-readable overdue duration, e.g. '2d 3h'"
+          nullable: true
+
+    LogTimeRequest:
+      type: object
+      required: [hours]
+      properties:
+        hours:
+          type: number
+          format: float
+          minimum: 0.01
+        description:
+          type: string
+          maxLength: 500
+
+    # ── Comment ───────────────────────────
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "cmt_001"
+        task_id:
+          type: string
+        user_id:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateCommentRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+
+    UpdateCommentRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+
+    CommentListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ── Label ─────────────────────────────
+    Label:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "lbl_001"
+        project_id:
+          type: string
+        name:
+          type: string
+          example: "bug"
+        color:
+          type: string
+          description: "Hex color code"
+          example: "#FF5733"
+        created_at:
+          type: string
+          format: date-time
+
+    CreateLabelRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        color:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+
+    # ── Activity ──────────────────────────
+    ActivityEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        project_id:
+          type: string
+        task_id:
+          type: string
+          nullable: true
+        user_id:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+        action:
+          type: string
+          enum:
+            - task_created
+            - task_updated
+            - task_deleted
+            - task_assigned
+            - status_changed
+            - comment_added
+            - comment_deleted
+            - member_added
+            - member_removed
+            - sprint_created
+            - sprint_updated
+            - label_created
+            - label_deleted
+        details:
+          type: object
+          description: "Action-specific metadata (e.g. old/new status values)"
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+
+    ActivityListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityEntry"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ── Sprint ────────────────────────────
+    Sprint:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "spr_001"
+        project_id:
+          type: string
+        name:
+          type: string
+          example: "Sprint 5"
+        label:
+          type: string
+          description: Optional label/tag for the sprint
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        is_active:
+          type: boolean
+        task_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateSprintRequest:
+      type: object
+      required: [name, start_date, end_date]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        label:
+          type: string
+          maxLength: 100
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+
+    UpdateSprintRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        label:
+          type: string
+          maxLength: 100
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        is_active:
+          type: boolean
+
+    # ── Notification ──────────────────────
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        type:
+          type: string
+          enum: [reminder, alert, mention, assignment]
+        title:
+          type: string
+        message:
+          type: string
+        is_read:
+          type: boolean
+        reference_type:
+          type: string
+          enum: [task, comment, project, sprint]
+          nullable: true
+        reference_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    NotificationListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        unread_count:
+          type: integer
+
+    # ── Charts ────────────────────────────
+    StatusChart:
+      type: object
+      properties:
+        project_id:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [todo, in_progress, staging_review, done]
+              count:
+                type: integer
+
+    PriorityChart:
+      type: object
+      properties:
+        project_id:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              priority:
+                type: string
+                enum: [p1, p2, p3, p4]
+              count:
+                type: integer
+
+    # ── Shared ────────────────────────────
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_items:
+          type: integer
+        total_pages:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
