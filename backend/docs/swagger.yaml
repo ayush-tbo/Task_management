@@ -1642,4 +1642,8 @@ components:
       type: object
       properties:
         message:
+<<<<<<< HEAD
           type: string
+=======
+          type: string
+>>>>>>> 3913f28a646f762fd92ac93f16be93d0ad6d3ceb
