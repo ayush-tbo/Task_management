@@ -1,13 +1,19 @@
-package handler
+package app
 
 import (
-	"github.com/floqast/task-management/backend/internal/app"
 	"github.com/go-chi/chi/v5"
 )
 
-func SetupRoutes(app *app.Application) *chi.Mux {
+func SetupRoutes(app *Application) *chi.Mux {
 
 	r := chi.NewRouter()
+
+	r.Get("/api/users/{id}", app.UserHandler.GetCurrentUser)
+	r.Group(func(r chi.Router) {
+		r.Use(app.Middleware.Authenticate)
+
+		r.Patch("/api/users/{id}", app.Middleware.RequireUser(app.UserHandler.UpdateCurrentUser))
+	})
 
 	// mux.HandleFunc("GET /api/users/me", userH.GetCurrentUser)
 	// mux.HandleFunc("PUT /api/users/me", userH.UpdateCurrentUser)

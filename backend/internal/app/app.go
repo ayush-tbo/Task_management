@@ -4,7 +4,10 @@ import (
 	"log"
 	"os"
 
+	"github.com/floqast/task-management/backend/internal/handler"
+	"github.com/floqast/task-management/backend/internal/middleware"
 	"github.com/floqast/task-management/backend/internal/repository"
+	"github.com/floqast/task-management/backend/internal/service"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -17,8 +20,9 @@ type Application struct {
 	// ProjectHandler      *handler.ProjectHandler
 	// SprintHandler       *handler.SprintHandler
 	// TaskHandler         *handler.TaskHandler
-	// UserHandler         *handler.UserHandler
-	mongoDB *mongo.Client
+	UserHandler *handler.UserHandler
+	Middleware  middleware.UserMiddleware
+	mongoDB     *mongo.Client
 }
 
 func NewApplication() (*Application, error) {
@@ -31,8 +35,10 @@ func NewApplication() (*Application, error) {
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
 	// Our Repositories will go here
+	userRepository := repository.NewMongoUserRepository(mongoDB)
 
 	// Our Services will go here
+	userService := service.NewUserService(userRepository)
 
 	// // Our Handlers will go here
 	// activityHandler := handler.NewActivityHandler()
@@ -42,11 +48,14 @@ func NewApplication() (*Application, error) {
 	// projectHandler := handler.NewProjectHandler()
 	// sprintHandler := handler.NewSprintHandler()
 	// taskHandler := handler.NewTaskHandler()
-	// userHandler := handler.NewUserHandler()
+	userHandler := handler.NewUserHandler(userService, logger)
+	middlewareHandler := middleware.UserMiddleware{UserRepository: userRepository}
 
 	app := &Application{
-		Logger:  logger,
-		mongoDB: mongoDB,
+		Logger:      logger,
+		UserHandler: userHandler,
+		Middleware:  middlewareHandler,
+		mongoDB:     mongoDB,
 	}
 
 	return app, nil

@@ -6,14 +6,6 @@ import (
 	"github.com/floqast/task-management/backend/internal/model"
 )
 
-type UserRepository interface {
-	FindByID(ctx context.Context, id string) (*model.User, error)
-	FindByEmail(ctx context.Context, email string) (*model.User, error)
-	Search(ctx context.Context, query string, page, pageSize int) ([]model.User, int, error)
-	Create(ctx context.Context, user *model.User) error
-	Update(ctx context.Context, user *model.User) error
-}
-
 type ProjectRepository interface {
 	FindByID(ctx context.Context, id string) (*model.Project, error)
 	FindByUser(ctx context.Context, userID string, page, pageSize int) ([]model.Project, int, error)

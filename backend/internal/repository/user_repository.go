@@ -1,0 +1,124 @@
+package repository
+
+import (
+	"context"
+	"crypto/sha256"
+	"errors"
+	"strconv"
+	"time"
+
+	"github.com/floqast/task-management/backend/internal/model"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+)
+
+type UserRepository interface {
+	FindByID(ctx context.Context, id string) (*model.User, error)
+	FindByEmail(ctx context.Context, email string) (*model.User, error)
+	FindByName(ctx context.Context, name string) (*model.User, error)
+	// Search(ctx context.Context, query string, page, pageSize int) ([]model.User, int, error)
+	Create(ctx context.Context, user *model.User) error
+	Update(ctx context.Context, user *model.User) error
+	GetUserToken(ctx context.Context, scope string, tokenPlainText string) (*model.User, error)
+}
+
+// MongoDB Implementations
+
+type MongoUserRepository struct {
+	collection *mongo.Collection
+}
+
+func NewMongoUserRepository(db *mongo.Client) *MongoUserRepository {
+	return &MongoUserRepository{
+		collection: db.Database("NoSQL").Collection("users"),
+	}
+}
+
+func (m *MongoUserRepository) FindByID(ctx context.Context, id string) (*model.User, error) {
+	var user model.User
+
+	err := m.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil // User Not Found
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (m *MongoUserRepository) FindByEmail(ctx context.Context, email string) (*model.User, error) {
+	var user model.User
+
+	err := m.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil // User Not Found
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (m *MongoUserRepository) FindByName(ctx context.Context, name string) (*model.User, error) {
+	var user model.User
+	err := m.collection.FindOne(ctx, bson.M{"name": name}).Decode(&user)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil // User Not Found
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+// func (m *MongoUserRepository) Search(ctx context.Context, query string, page, pageSize int) ([]model.User, int, error) {
+
+// }
+
+func (m *MongoUserRepository) Create(ctx context.Context, user *model.User) error {
+	_, err := m.collection.InsertOne(ctx, user)
+	return err
+}
+
+func (m *MongoUserRepository) Update(ctx context.Context, user *model.User) error {
+	filter := bson.M{"_id": user.ID}
+
+	update := bson.M{
+		"$set": bson.M{
+			"name":       user.Name,
+			"avatar_url": user.AvatarURL,
+			"updated_at": user.UpdatedAt,
+			"email":      user.Email,
+		},
+	}
+
+	_, err := m.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
+func (m MongoUserRepository) GetUserToken(ctx context.Context, scope string, plainTextPassword string) (*model.User, error) {
+	tokenHash := sha256.Sum256([]byte(plainTextPassword))
+
+	tokenCollection := m.collection.Database().Collection("tokens")
+
+	var token model.Token
+
+	tokenFilter := bson.M{
+		"hash":   tokenHash[:],
+		"scope":  scope,
+		"expiry": bson.M{"$gt": time.Now()},
+	}
+
+	err := tokenCollection.FindOne(ctx, tokenFilter).Decode(&token)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil // Token not found or expired
+		}
+		return nil, err
+	}
+
+	userIDStr := strconv.Itoa(token.UserID)
+
+	return m.FindByID(ctx, userIDStr)
+}

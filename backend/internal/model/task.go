@@ -55,13 +55,29 @@ const (
 	ActionLabelDeleted   ActivityAction = "label_deleted"
 )
 
+type Password struct {
+	PlainText *string
+	Hash      []byte
+}
+
 type User struct {
-	ID        string    `json:"id" bson:"_id"`
-	Email     string    `json:"email" bson:"email"`
-	Name      string    `json:"name" bson:"name"`
-	AvatarURL string    `json:"avatar_url,omitempty" bson:"avatar_url,omitempty"`
-	CreatedAt time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
+	ID           string    `json:"id" bson:"_id"`
+	Email        string    `json:"email" bson:"email"`
+	Name         string    `json:"name" bson:"name"`
+	AvatarURL    string    `json:"avatar_url,omitempty" bson:"avatar_url,omitempty"`
+	PasswordHash Password  `json:"-" bson:"password_hash"`
+	CreatedAt    time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at" bson:"updated_at"`
+}
+
+var AnonymousUser = &User{}
+
+type Token struct {
+	PlainText string    `json:"token" bson:"token"`
+	Hash      []byte    `json:"-" bson:"hash"`
+	UserID    int       `json:"-" bson:"user_id"`
+	Expiry    time.Time `json:"expiry" bson:"expiry"`
+	Scope     string    `json:"-" bson:"scope"`
 }
 
 type Project struct {

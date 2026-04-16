@@ -15,10 +15,6 @@ type Services struct {
 	Notification *NotificationService
 }
 
-type UserService struct {
-	repo repository.UserRepository
-}
-
 type ProjectService struct {
 	repo     repository.ProjectRepository
 	activity repository.ActivityRepository

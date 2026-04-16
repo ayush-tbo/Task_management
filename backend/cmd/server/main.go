@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/floqast/task-management/backend/internal/app"
-	"github.com/floqast/task-management/backend/internal/handler"
 	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
@@ -23,13 +22,13 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	app, err := app.NewApplication()
+	application, err := app.NewApplication()
 	if err != nil {
 		panic(err)
 	}
-	app.Logger.Printf("We are running on port %s \n", port)
+	application.Logger.Printf("We are running on port %s \n", port)
 
-	r := handler.SetupRoutes(app)
+	r := app.SetupRoutes(application)
 
 	r.Get("/api/hello", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -43,7 +42,7 @@ func main() {
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.yaml"),
 	))
-	app.Logger.Printf("Swagger UI: http://localhost:%s/swagger/", port)
+	application.Logger.Printf("Swagger UI: http://localhost:%s/swagger/", port)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", port),
@@ -55,6 +54,6 @@ func main() {
 
 	err = server.ListenAndServe()
 	if err != nil {
-		app.Logger.Fatal(err)
+		application.Logger.Fatal(err)
 	}
 }
