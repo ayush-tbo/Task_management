@@ -6,6 +6,7 @@ require github.com/swaggo/http-swagger/v2 v2.0.2
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
+	github.com/go-chi/chi/v5 v5.2.5 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/spec v0.20.6 // indirect
