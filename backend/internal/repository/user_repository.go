@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/floqast/task-management/backend/internal/model"
@@ -19,7 +18,8 @@ type UserRepository interface {
 	// Search(ctx context.Context, query string, page, pageSize int) ([]model.User, int, error)
 	Create(ctx context.Context, user *model.User) error
 	Update(ctx context.Context, user *model.User) error
-	GetUserToken(ctx context.Context, scope string, tokenPlainText string) (*model.User, error)
+	GetToken(ctx context.Context, scope string, tokenPlainText string) (*model.Token, error)
+	CreateToken(ctx context.Context, token *model.Token) error
 }
 
 // MongoDB Implementations
@@ -97,7 +97,7 @@ func (m *MongoUserRepository) Update(ctx context.Context, user *model.User) erro
 	return err
 }
 
-func (m MongoUserRepository) GetUserToken(ctx context.Context, scope string, plainTextPassword string) (*model.User, error) {
+func (m *MongoUserRepository) GetToken(ctx context.Context, scope string, plainTextPassword string) (*model.Token, error) {
 	tokenHash := sha256.Sum256([]byte(plainTextPassword))
 
 	tokenCollection := m.collection.Database().Collection("tokens")
@@ -118,7 +118,11 @@ func (m MongoUserRepository) GetUserToken(ctx context.Context, scope string, pla
 		return nil, err
 	}
 
-	userIDStr := strconv.Itoa(token.UserID)
+	return &token, err
+}
 
-	return m.FindByID(ctx, userIDStr)
+func (m *MongoUserRepository) CreateToken(ctx context.Context, token *model.Token) error {
+	tokenCollection := m.collection.Database().Collection("tokens")
+	_, err := tokenCollection.InsertOne(ctx, token)
+	return err
 }

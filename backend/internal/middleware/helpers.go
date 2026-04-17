@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/floqast/task-management/backend/internal/model"
 	"github.com/go-chi/chi/v5"
@@ -25,16 +24,11 @@ func decodeJSON(r *http.Request, v interface{}) error {
 	return json.NewDecoder(r.Body).Decode(v)
 }
 
-func ReadIDParam(r *http.Request) (int64, error) {
+func ReadIDParam(r *http.Request) (string, error) {
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
-		return 0, errors.New("invalid id parameter")
+		return "", errors.New("invalid id parameter")
 	}
 
-	id, err := strconv.ParseInt(idParam, 10, 64)
-	if err != nil {
-		return 0, errors.New("invalid id parameter type")
-	}
-
-	return id, nil
+	return idParam, nil
 }

@@ -80,6 +80,18 @@ type UpdateSprintRequest struct {
 	IsActive  *bool      `json:"is_active,omitempty"`
 }
 
+type RegisterUserRequest struct {
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatar_url,omitempty"`
+	Password  string `json:"password"`
+}
+
+type LoginUserRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type UpdateUserRequest struct {
 	Name      *string `json:"name,omitempty"`
 	AvatarURL *string `json:"avatar_url,omitempty" validate:"omitempty,url"`

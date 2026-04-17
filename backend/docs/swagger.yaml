@@ -35,25 +35,69 @@ tags:
     description: Reminders and alerts
 
 paths:
-  # ─── Users ──────────────────────────────────────────────
-  /api/users/me:
-    get:
+# ─── Users ──────────────────────────────────────────────
+  /api/users/register:
+    post:
       tags: [Users]
-      summary: Get current user profile
-      operationId: getCurrentUser
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterUserRequest"
       responses:
-        "200":
-          description: Current user
+        "201":
+          description: User created
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/users/login:
+    post:
+      tags: [Users]
+      summary: Authenticate user and get token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /api/users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user by ID
+      operationId: getUserById
+      parameters:
+        - $ref: "#/components/parameters/UserIdParam"
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          $ref: "#/components/responses/NotFound"
     put:
       tags: [Users]
-      summary: Update current user profile
-      operationId: updateCurrentUser
+      summary: Update user profile by ID
+      operationId: updateUserById
       requestBody:
         required: true
         content:
@@ -964,6 +1008,12 @@ components:
       description: JWT token obtained from frontend OAuth flow
 
   parameters:
+    UserIdParam:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
     ProjectIdParam:
       name: projectId
       in: path
@@ -1079,6 +1129,43 @@ components:
             $ref: "#/components/schemas/User"
         pagination:
           $ref: "#/components/schemas/Pagination"
+
+    RegisterUserRequest:
+      type: object
+      required: [email, name, password]
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        password:
+          type: string
+          format: password
+          minLength: 8
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Bearer token for authentication
+        expiry:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/User"
 
     # ── Project ───────────────────────────
     Project:

@@ -7,12 +7,11 @@ import (
 	"strings"
 
 	"github.com/floqast/task-management/backend/internal/model"
-	"github.com/floqast/task-management/backend/internal/repository"
 	"github.com/floqast/task-management/backend/internal/service"
 )
 
 type UserMiddleware struct {
-	UserRepository repository.UserRepository
+	UserService service.UserService
 }
 
 type contextKey string
@@ -53,14 +52,15 @@ func (um *UserMiddleware) Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		token := headerParts[1]
+		tokenIncoming := headerParts[1]
 
-		user, err := um.UserRepository.GetUserToken(r.Context(), ScopeAuth, token)
+		token, err := um.UserService.GetToken(r.Context(), ScopeAuth, tokenIncoming)
 		if err != nil {
 			WriteError(w, http.StatusUnauthorized, "Token not found", "Invalid Token")
 			return
 		}
 
+		user, err := um.UserService.FindByID(r.Context(), token.UserID)
 		if user == nil {
 			WriteError(w, http.StatusUnauthorized, "Token Expired", "token expired or invalid")
 			return

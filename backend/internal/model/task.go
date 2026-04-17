@@ -75,7 +75,7 @@ var AnonymousUser = &User{}
 type Token struct {
 	PlainText string    `json:"token" bson:"token"`
 	Hash      []byte    `json:"-" bson:"hash"`
-	UserID    int       `json:"-" bson:"user_id"`
+	UserID    string    `json:"-" bson:"user_id"`
 	Expiry    time.Time `json:"expiry" bson:"expiry"`
 	Scope     string    `json:"-" bson:"scope"`
 }

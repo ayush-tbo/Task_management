@@ -49,7 +49,7 @@ func NewApplication() (*Application, error) {
 	// sprintHandler := handler.NewSprintHandler()
 	// taskHandler := handler.NewTaskHandler()
 	userHandler := handler.NewUserHandler(userService, logger)
-	middlewareHandler := middleware.UserMiddleware{UserRepository: userRepository}
+	middlewareHandler := middleware.UserMiddleware{UserService: *userService}
 
 	app := &Application{
 		Logger:      logger,

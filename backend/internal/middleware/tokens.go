@@ -13,7 +13,7 @@ const (
 	ScopeAuth = "authentication"
 )
 
-func GenerateToken(userID int, ttl time.Duration, scope string) (*model.Token, error) {
+func GenerateToken(userID string, ttl time.Duration, scope string) (*model.Token, error) {
 	token := &model.Token{
 		UserID: userID,
 		Expiry: time.Now().Add(ttl),
