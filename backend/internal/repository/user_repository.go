@@ -15,10 +15,10 @@ type UserRepository interface {
 	FindByID(ctx context.Context, id string) (*model.User, error)
 	FindByEmail(ctx context.Context, email string) (*model.User, error)
 	FindByName(ctx context.Context, name string) (*model.User, error)
-	// Search(ctx context.Context, query string, page, pageSize int) ([]model.User, int, error)
+	GetAllUsers(ctx context.Context) ([]model.User, error)
 	Create(ctx context.Context, user *model.User) error
 	Update(ctx context.Context, user *model.User) error
-	GetToken(ctx context.Context, scope string, tokenPlainText string) (*model.Token, error)
+	GetToken(ctx context.Context, scope string, tokenPlainText string) (*model.Token, error) // can move to token repo
 	CreateToken(ctx context.Context, token *model.Token) error
 }
 
@@ -72,9 +72,26 @@ func (m *MongoUserRepository) FindByName(ctx context.Context, name string) (*mod
 	return &user, nil
 }
 
-// func (m *MongoUserRepository) Search(ctx context.Context, query string, page, pageSize int) ([]model.User, int, error) {
+func (m *MongoUserRepository) GetAllUsers(ctx context.Context) ([]model.User, error) {
+	var users []model.User
 
-// }
+	cursor, err := m.collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	err = cursor.All(ctx, &users)
+	if err != nil {
+		return nil, err
+	}
+
+	if users == nil {
+		users = []model.User{}
+	}
+
+	return users, nil
+}
 
 func (m *MongoUserRepository) Create(ctx context.Context, user *model.User) error {
 	_, err := m.collection.InsertOne(ctx, user)
@@ -86,10 +103,11 @@ func (m *MongoUserRepository) Update(ctx context.Context, user *model.User) erro
 
 	update := bson.M{
 		"$set": bson.M{
-			"name":       user.Name,
-			"avatar_url": user.AvatarURL,
-			"updated_at": user.UpdatedAt,
-			"email":      user.Email,
+			"name":          user.Name,
+			"avatar_url":    user.AvatarURL,
+			"updated_at":    user.UpdatedAt,
+			"email":         user.Email,
+			"password_hash": user.PasswordHash,
 		},
 	}
 

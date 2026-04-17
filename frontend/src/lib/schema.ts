@@ -12,3 +12,22 @@ export const taskSchema = z.object({
     status: z.enum(["todo", "inProgress", "review", "completed"]),
     assignedTo: z.string().optional(),
 });
+
+export const registerSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    email: z.string().min(1, "Email is required").email("Invalid email address"), 
+    password: z.string().min(8, "Password must be at least 8 characters").max(50, "Password is too long"),
+})
+
+export const loginSchema = z.object({
+    email: z.string().min(1, "Email is required").email("Invalid email address"), 
+    password: z.string().min(8, "Password must be at least 8 characters").max(50, "Password is too long"),
+})
+
+export const editUserSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    password: z.string().max(50, "Password is too long").refine(
+        (val) => val.length === 0 || val.length > 8,
+        "Password must be empty or greater than 8 characters"
+    ).optional().or(z.literal("")),
+})

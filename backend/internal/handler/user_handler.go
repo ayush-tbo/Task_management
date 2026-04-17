@@ -88,6 +88,12 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err = h.userService.FindByEmail(r.Context(), req.Email)
+	if err == nil {
+		middleware.WriteError(w, http.StatusConflict, "conflict", "Email Id already present")
+		return
+	}
+
 	user := &model.User{
 		ID:        primitive.NewObjectID().Hex(),
 		Name:      req.Name,
@@ -114,7 +120,26 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	middleware.WriteJSON(w, http.StatusCreated, map[string]any{"user": user})
+	token, err := middleware.GenerateToken(user.ID, 24*time.Hour, middleware.ScopeAuth)
+	if err != nil {
+		h.logger.Printf("ERROR: generateToken: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
+		return
+	}
+
+	err = h.userService.CreateToken(r.Context(), token)
+	if err != nil {
+		h.logger.Printf("ERROR: createToken: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
+		return
+	}
+
+	middleware.WriteJSON(w, http.StatusOK, map[string]any{
+		"token": token.PlainText,
+		"user":  user,
+	})
+
+	// middleware.WriteJSON(w, http.StatusCreated, map[string]any{"user": user})
 }
 
 func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -218,6 +243,14 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 	if input.AvatarURL != nil {
 		existingUser.AvatarURL = *input.AvatarURL
 	}
+	if input.Password != nil && *input.Password != "" {
+		err = SetUserPassword(&existingUser.PasswordHash, *input.Password)
+		if err != nil {
+			h.logger.Printf("ERROR: setUserPassword %v", err)
+			middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
+			return
+		}
+	}
 
 	currentUser := middleware.GetUser(r)
 	if currentUser == nil || currentUser == model.AnonymousUser {
@@ -235,10 +268,18 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"user": existingUser})
 }
 
-func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
-}
+func (h *UserHandler) AllUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.userService.GetAllUsers(r.Context())
 
-func (h *UserHandler) InviteUser(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	if err != nil {
+		h.logger.Printf("ERROR: getAllUsers: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve users")
+		return
+	}
+
+	if len(users) == 0 {
+		middleware.WriteJSON(w, http.StatusOK, map[string]any{"data": []model.User{}})
+		return
+	}
+	middleware.WriteJSON(w, http.StatusOK, map[string]any{"data": users})
 }

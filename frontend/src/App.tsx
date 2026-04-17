@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React from "react";
 import {BrowserRouter as Router, Routes, Route} from "react-router-dom";
 import './App.css';
@@ -11,28 +10,38 @@ import PageNotFound from "./components/routes/Authentication/PageNotFound";
 import Login from "./components/routes/Authentication/Login";
 import Register from "./components/routes/Authentication/Register";
 import ActivityLog from "./components/routes/ActivityLog/ActivityLog";
+import { AuthProvider } from "./context/AuthContext";
+import { ProtectedRoute } from "./components/routes/Authentication/ProtectedRoutes";
+import axios from "axios";
 
 function App() {
+
+  axios.interceptors.request.use((config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+  
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/project/:id" element={<Project />} />
-        <Route path="/task/:id" element={<Task />} />
-        <Route path="/addEdit" element={<AddEditTask />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/activity" element={<ActivityLog />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="*" element={<PageNotFound />} />
+
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/project/:id" element={<ProtectedRoute><Project /></ProtectedRoute>} />
+          <Route path="/task/:id" element={<ProtectedRoute><Task /></ProtectedRoute>} />
+          <Route path="/addEdit" element={<ProtectedRoute><AddEditTask /></ProtectedRoute>} />
+          <Route path="/activity" element={<ProtectedRoute><ActivityLog /></ProtectedRoute>} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
 export default App;
-=======
-export default function App() {
-  return <h1>Hello from React frontend!</h1>;
-}
->>>>>>> 3913f28a646f762fd92ac93f16be93d0ad6d3ceb

@@ -70,7 +70,7 @@ function TaskForm(){
 
     return (
         <div className="max-w-3xl mx-auto px-5 pt-20">
-            <h1 className="text-5xl gradient-title">{editMode ? "Edit" : "Add"} Transaction</h1>
+            <h1 className="text-5xl gradient-title">{editMode ? "Edit" : "Add"} task</h1>
             <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
                 <div className="space-y-2">
                     <label htmlFor="title" className="text-sm font-medium">Title</label>

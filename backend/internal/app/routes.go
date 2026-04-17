@@ -10,11 +10,13 @@ func SetupRoutes(app *Application) *chi.Mux {
 
 	r.Post("/api/users/register", app.UserHandler.RegisterUser)
 	r.Post("/api/users/login", app.UserHandler.LoginUser)
-	r.Get("/api/users/{id}", app.UserHandler.GetUserById)
+
 	r.Group(func(r chi.Router) {
 		r.Use(app.Middleware.Authenticate)
 
+		r.Get("/api/users/{id}", app.Middleware.RequireUser(app.UserHandler.GetUserById))
 		r.Patch("/api/users/{id}", app.Middleware.RequireUser(app.UserHandler.UpdateUserById))
+		r.Get("/api/users", app.Middleware.RequireUser(app.UserHandler.AllUsers))
 	})
 
 	// mux.HandleFunc("GET /api/users/me", userH.GetCurrentUser)

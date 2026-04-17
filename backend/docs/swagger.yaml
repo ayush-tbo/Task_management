@@ -117,23 +117,17 @@ paths:
   /api/users:
     get:
       tags: [Users]
-      summary: List / search users
-      operationId: listUsers
-      parameters:
-        - name: q
-          in: query
-          description: Search by name or email
-          schema:
-            type: string
-        - $ref: "#/components/parameters/PageParam"
-        - $ref: "#/components/parameters/PageSizeParam"
+      summary: Get all users
+      operationId: allUsers
       responses:
         "200":
-          description: Paginated user list
+          description: All users details
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserListResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/users/invite:
     post:
@@ -1127,8 +1121,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/User"
-        pagination:
-          $ref: "#/components/schemas/Pagination"
 
     RegisterUserRequest:
       type: object

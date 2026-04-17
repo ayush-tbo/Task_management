@@ -33,6 +33,10 @@ func (s *UserService) FindByName(ctx context.Context, name string) (*model.User,
 	return s.repo.FindByName(ctx, name)
 }
 
+func (s *UserService) GetAllUsers(ctx context.Context) ([]model.User, error) {
+	return s.repo.GetAllUsers(ctx)
+}
+
 func (s *UserService) Create(ctx context.Context, user *model.User) error {
 	return s.repo.Create(ctx, user)
 }

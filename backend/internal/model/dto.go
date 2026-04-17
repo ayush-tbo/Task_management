@@ -95,6 +95,7 @@ type LoginUserRequest struct {
 type UpdateUserRequest struct {
 	Name      *string `json:"name,omitempty"`
 	AvatarURL *string `json:"avatar_url,omitempty" validate:"omitempty,url"`
+	Password  *string `json:"password,omitempty"`
 }
 
 type InviteUserRequest struct {
