@@ -21,11 +21,9 @@ function Profile() {
     const [open, setOpen] = useState(false);
     const [updateError, setUpdateError] = useState<string | null>(null);
 
-    const { register, handleSubmit, formState:{errors}, watch, reset} = useForm({
+    const { register, handleSubmit, formState:{errors}, reset} = useForm({
         resolver:zodResolver(editUserSchema),
     });
-    const name = watch("name")
-    const password = watch("password")
 
     useEffect(() => {
         if (user) {

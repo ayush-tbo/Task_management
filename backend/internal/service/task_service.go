@@ -5,10 +5,10 @@ import (
 )
 
 type Services struct {
-	User         *UserService
-	Project      *ProjectService
-	Task         *TaskService
-	Comment      *CommentService
+	User    *UserService
+	Project *ProjectService
+	Task    *TaskService
+	// Comment      *CommentService
 	Label        *LabelService
 	Activity     *ActivityService
 	Sprint       *SprintService
@@ -25,10 +25,10 @@ type TaskService struct {
 	activity repository.ActivityRepository
 }
 
-type CommentService struct {
-	repo     repository.CommentRepository
-	activity repository.ActivityRepository
-}
+// type CommentService struct {
+// 	repo     repository.CommentRepository
+// 	activity repository.ActivityRepository
+// }
 
 type LabelService struct {
 	repo     repository.LabelRepository

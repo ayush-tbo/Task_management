@@ -134,7 +134,7 @@ type Comment struct {
 	ID        string    `json:"id" bson:"_id"`
 	TaskID    string    `json:"task_id" bson:"task_id"`
 	UserID    string    `json:"user_id" bson:"user_id"`
-	User      *User     `json:"user,omitempty" bson:"-"`
+	User      *User     `json:"user,omitempty" bson:"user"`
 	Content   string    `json:"content" bson:"content"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`

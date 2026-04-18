@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -28,7 +27,7 @@ func GetUser(r *http.Request) *model.User {
 	if !ok {
 		panic("missing user in request") // bad actor call
 	}
-	fmt.Println(user)
+	// fmt.Println(user)
 	return user
 }
 

@@ -57,7 +57,7 @@ type CreateCommentRequest struct {
 }
 
 type UpdateCommentRequest struct {
-	Content string `json:"content" validate:"required,min=1,max=5000"`
+	Content *string `json:"content" validate:"required,min=1,max=5000"`
 }
 
 type CreateLabelRequest struct {

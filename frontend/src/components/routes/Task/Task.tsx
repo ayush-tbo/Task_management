@@ -46,7 +46,7 @@ function Task() {
                     <h2>Due Date: {testingTasks[0].dueDate.toLocaleDateString("en-GB")}</h2>
                 </div>
             </div>
-            <Comments />
+            <Comments taskId={"69e29172c6baba2bb6ddb35e"}/>
             <Footer />
         </div>
     );

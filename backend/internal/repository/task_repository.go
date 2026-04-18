@@ -42,13 +42,13 @@ type TaskFilters struct {
 	SortOrder  string
 }
 
-type CommentRepository interface {
-	FindByTask(ctx context.Context, taskID string, page, pageSize int) ([]model.Comment, int, error)
-	FindByID(ctx context.Context, id string) (*model.Comment, error)
-	Create(ctx context.Context, comment *model.Comment) error
-	Update(ctx context.Context, comment *model.Comment) error
-	Delete(ctx context.Context, id string) error
-}
+// type CommentRepository interface {
+// 	FindByTask(ctx context.Context, taskID string, page, pageSize int) ([]model.Comment, int, error)
+// 	FindByID(ctx context.Context, id string) (*model.Comment, error)
+// 	Create(ctx context.Context, comment *model.Comment) error
+// 	Update(ctx context.Context, comment *model.Comment) error
+// 	Delete(ctx context.Context, id string) error
+// }
 
 type LabelRepository interface {
 	FindByProject(ctx context.Context, projectID string) ([]model.Label, error)

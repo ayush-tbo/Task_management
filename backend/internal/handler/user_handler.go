@@ -216,6 +216,12 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	currentUser := middleware.GetUser(r)
+	if currentUser == nil || currentUser == model.AnonymousUser {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "you must be logged in to update")
+		return
+	}
+
 	existingUser, err := h.userService.FindByID(r.Context(), userID)
 	if err != nil {
 		h.logger.Printf("ERROR: findByID: %v", err)
@@ -225,6 +231,11 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 
 	if existingUser == nil {
 		http.NotFound(w, r)
+		return
+	}
+
+	if existingUser.ID != userID {
+		middleware.WriteError(w, http.StatusForbidden, "Forbidden", "You cannot update this user profile")
 		return
 	}
 
@@ -251,12 +262,7 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	currentUser := middleware.GetUser(r)
-	if currentUser == nil || currentUser == model.AnonymousUser {
-		middleware.WriteError(w, http.StatusBadRequest, "bad request", "you must be logged in to update")
-		return
-	}
+	existingUser.UpdatedAt = time.Now()
 
 	err = h.userService.Update(r.Context(), existingUser)
 	if err != nil {

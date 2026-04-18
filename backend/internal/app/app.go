@@ -14,7 +14,7 @@ import (
 type Application struct {
 	Logger *log.Logger
 	// ActivityHandler     *handler.ActivityHandler
-	// CommentHandler      *handler.CommentHandler
+	CommentHandler *handler.CommentHandler
 	// LabelHandler        *handler.LabelHandler
 	// NotificationHandler *handler.NotificationHandler
 	// ProjectHandler      *handler.ProjectHandler
@@ -36,9 +36,11 @@ func NewApplication() (*Application, error) {
 
 	// Our Repositories will go here
 	userRepository := repository.NewMongoUserRepository(mongoDB)
+	commentRepository := repository.NewMongoCommentRepository(mongoDB)
 
 	// Our Services will go here
 	userService := service.NewUserService(userRepository)
+	commentService := service.NewCommentService(commentRepository)
 
 	// // Our Handlers will go here
 	// activityHandler := handler.NewActivityHandler()
@@ -50,12 +52,14 @@ func NewApplication() (*Application, error) {
 	// taskHandler := handler.NewTaskHandler()
 	userHandler := handler.NewUserHandler(userService, logger)
 	middlewareHandler := middleware.UserMiddleware{UserService: *userService}
+	commentHandler := handler.NewCommentHandler(commentService, logger)
 
 	app := &Application{
-		Logger:      logger,
-		UserHandler: userHandler,
-		Middleware:  middlewareHandler,
-		mongoDB:     mongoDB,
+		Logger:         logger,
+		UserHandler:    userHandler,
+		Middleware:     middlewareHandler,
+		CommentHandler: commentHandler,
+		mongoDB:        mongoDB,
 	}
 
 	return app, nil
