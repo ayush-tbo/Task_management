@@ -12,16 +12,16 @@ import (
 )
 
 type Application struct {
-	Logger *log.Logger
-	// ActivityHandler     *handler.ActivityHandler
-	CommentHandler *handler.CommentHandler
+	Logger          *log.Logger
+	Middleware      middleware.UserMiddleware
+	ActivityHandler *handler.ActivityHandler
+	CommentHandler  *handler.CommentHandler
 	// LabelHandler        *handler.LabelHandler
 	// NotificationHandler *handler.NotificationHandler
 	ProjectHandler *handler.ProjectHandler
 	// SprintHandler       *handler.SprintHandler
 	TaskHandler *handler.TaskHandler
 	UserHandler *handler.UserHandler
-	Middleware  middleware.UserMiddleware
 	mongoDB     *mongo.Client
 }
 
@@ -39,12 +39,14 @@ func NewApplication() (*Application, error) {
 	commentRepository := repository.NewMongoCommentRepository(mongoDB)
 	projectRepository := repository.NewMongoProjectRepository(mongoDB)
 	taskRepository := repository.NewMongoTaskRepository(mongoDB)
+	activityRepository := repository.NewMongoActivityRepository(mongoDB)
 
 	// our services will go here
 	userService := service.NewUserService(userRepository)
 	commentService := service.NewCommentService(commentRepository)
 	projectService := service.NewProjectService(projectRepository, nil)
 	taskService := service.NewTaskService(taskRepository)
+	activityService := service.NewActivityService(activityRepository)
 
 	// // our handlers will go here
 	// activityHandler := handler.NewActivityHandler()
@@ -54,11 +56,12 @@ func NewApplication() (*Application, error) {
 	// projectHandler := handler.NewProjectHandler()
 	// sprintHandler := handler.NewSprintHandler()
 	// taskHandler := handler.NewTaskHandler()
-	userHandler := handler.NewUserHandler(userService, logger)
 	middlewareHandler := middleware.UserMiddleware{UserService: *userService}
 	commentHandler := handler.NewCommentHandler(commentService, logger)
 	projectHandler := handler.NewProjectHandler(projectService, taskService, logger)
 	taskHandler := handler.NewTaskHandler(taskService, projectService, logger)
+  userHandler := handler.NewUserHandler(userService, logger)
+	activityHandler := handler.NewActivityHandler(activityService, logger)
 
 	app := &Application{
 		Logger:         logger,
@@ -69,6 +72,7 @@ func NewApplication() (*Application, error) {
 		TaskHandler:    taskHandler,
 		mongoDB:        mongoDB,
 	}
+
 
 	return app, nil
 }

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -14,12 +15,14 @@ import (
 
 type CommentHandler struct {
 	commentService *service.CommentService
+	activity       *service.ActivityService
 	logger         *log.Logger
 }
 
-func NewCommentHandler(commentService *service.CommentService, logger *log.Logger) *CommentHandler {
+func NewCommentHandler(commentService *service.CommentService, activity *service.ActivityService, logger *log.Logger) *CommentHandler {
 	return &CommentHandler{
 		commentService: commentService,
+		activity:       activity,
 		logger:         logger,
 	}
 }
@@ -28,7 +31,7 @@ func (h *CommentHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
 		h.logger.Printf("ERROR: readIDParam: %v", err)
-		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid user id")
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
@@ -86,6 +89,25 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	activity := &model.ActivityEntry{
+		ID:        primitive.NewObjectID().Hex(),
+		ProjectID: req.ProjectID,
+		TaskID:    &taskID,
+		UserID:    user.ID,
+		User:      user,
+		Action:    model.ActionCommentAdded,
+		Details:   map[string]interface{}{"comment_id": comment.ID},
+		CreatedAt: time.Now(),
+	}
+
+	go func() {
+		err := h.activity.Create(context.Background(), activity)
+
+		if err != nil {
+			h.logger.Printf("ERROR: Activity Logging Error: %v", err)
+		}
+	}()
+
 	middleware.WriteJSON(w, http.StatusCreated, map[string]any{"comment": comment})
 }
 
@@ -120,6 +142,8 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	oldContent := existingComment.Content
+
 	var input model.UpdateCommentRequest
 
 	err = json.NewDecoder(r.Body).Decode(&input)
@@ -140,6 +164,25 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
+
+	activity := &model.ActivityEntry{
+		ID:        primitive.NewObjectID().Hex(),
+		ProjectID: input.ProjectID,
+		TaskID:    &input.TaskID,
+		UserID:    user.ID,
+		User:      user,
+		Action:    model.ActionCommentChanged,
+		Details:   map[string]interface{}{"comment_id": existingComment.ID, "old_content": oldContent},
+		CreatedAt: time.Now(),
+	}
+
+	go func() {
+		err := h.activity.Create(context.Background(), activity)
+
+		if err != nil {
+			h.logger.Printf("ERROR: Activity Logging Error: %v", err)
+		}
+	}()
 
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"comment": existingComment})
 }
@@ -170,11 +213,39 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var input model.DeleteCommentRequest
+
+	err = json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		h.logger.Printf("ERROR: decoding delete comment request: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request payload")
+		return
+	}
+
 	err = h.commentService.Delete(r.Context(), commentID)
 	if err != nil {
 		h.logger.Printf("ERROR: delete: %v", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "delete failed")
 	}
+
+	activity := &model.ActivityEntry{
+		ID:        primitive.NewObjectID().Hex(),
+		ProjectID: input.ProjectID,
+		TaskID:    &input.TaskID,
+		UserID:    user.ID,
+		User:      user,
+		Action:    model.ActionCommentDeleted,
+		Details:   map[string]interface{}{"comment_id": existingComment.ID, "info": "Comment was removed by the author"},
+		CreatedAt: time.Now(),
+	}
+
+	go func() {
+		err := h.activity.Create(context.Background(), activity)
+
+		if err != nil {
+			h.logger.Printf("ERROR: Activity Logging Error: %v", err)
+		}
+	}()
 
 	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
 }

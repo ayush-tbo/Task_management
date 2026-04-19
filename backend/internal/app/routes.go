@@ -46,6 +46,8 @@ func SetupRoutes(app *Application) *chi.Mux {
 		r.Put("/api/tasks/{id}/status", app.Middleware.RequireUser(app.TaskHandler.UpdateTaskStatus))
 		r.Get("/api/tasks/{id}/time", app.Middleware.RequireUser(app.TaskHandler.GetTaskTimeTracking))
 		r.Put("/api/tasks/{id}/time", app.Middleware.RequireUser(app.TaskHandler.LogTaskTime))
+		r.Get("/api/projects/{id}/activity", app.Middleware.RequireUser(app.ActivityHandler.GetProjectActivity))
+		r.Get("/api/tasks/{id}/activity", app.Middleware.RequireUser(app.ActivityHandler.GetTaskActivity))
 	})
 
 	// mux.HandleFunc("GET /api/users/me", userH.GetCurrentUser)
