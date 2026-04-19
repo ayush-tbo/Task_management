@@ -46,6 +46,7 @@ const (
 	ActionTaskAssigned   ActivityAction = "task_assigned"
 	ActionStatusChanged  ActivityAction = "status_changed"
 	ActionCommentAdded   ActivityAction = "comment_added"
+	ActionCommentChanged ActivityAction = "comment_changed"
 	ActionCommentDeleted ActivityAction = "comment_deleted"
 	ActionMemberAdded    ActivityAction = "member_added"
 	ActionMemberRemoved  ActivityAction = "member_removed"
@@ -153,7 +154,7 @@ type ActivityEntry struct {
 	ProjectID string                 `json:"project_id" bson:"project_id"`
 	TaskID    *string                `json:"task_id,omitempty" bson:"task_id,omitempty"`
 	UserID    string                 `json:"user_id" bson:"user_id"`
-	User      *User                  `json:"user,omitempty" bson:"-"`
+	User      *User                  `json:"user,omitempty" bson:"user"`
 	Action    ActivityAction         `json:"action" bson:"action"`
 	Details   map[string]interface{} `json:"details,omitempty" bson:"details,omitempty"`
 	CreatedAt time.Time              `json:"created_at" bson:"created_at"`

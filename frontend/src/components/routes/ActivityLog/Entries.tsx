@@ -1,29 +1,79 @@
-import React from "react";
-import { testingActivity } from "@/lib/static";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import axios from "axios";
+import { MessageSquare, Trash2, Edit, History } from "lucide-react";
 
-function Entries(){
+function Entries({ projectId, taskId }: any){
+
+    const [activities, setActivities] = useState([]);
+
+    const getActionMessage = (activity: any) => {
+        const {action, details} = activity
+
+        const actions: Record<string, string> = {
+            comment_added: "added a comment",
+            comment_changed: "edited a comment",
+            comment_deleted: "deleted a comment",
+        };
+
+        return actions[action] || action.replace("_", " ");
+    }
+
+    const getIcon = (action: string) => {
+        switch (action) {
+            case "comment_added": return <MessageSquare className="w-4 h-4 text-blue-500" />;
+            case "comment_deleted": return <Trash2 className="w-4 h-4 text-red-500" />;
+            case "comment_changed": return <Edit className="w-4 h-4 text-amber-500" />;
+            default: return <History className="w-4 h-4 text-slate-500" />;
+        }
+    }
+
+    const handleGetActivity = async () => {
+        try{
+            if(projectId){
+                const res = await axios.get(`http://localhost:8080/api/projects/${projectId}/activity`);
+                setActivities(res.data.activities);
+            }
+            else if(taskId){
+                const res = await axios.get(`http://localhost:8080/api/tasks/${taskId}/activity`);
+                setActivities(res.data.activities);
+            }
+        }
+        catch(err){
+            console.error("Failed to fetch activity", err);
+        }
+    };
+
+    useEffect(() => {
+        if(projectId || taskId){
+            handleGetActivity();
+        }
+    }, [projectId, taskId]);
+
     return (
-        <div className="container mx-auto py-4 px-4 space-y-2">
-            {testingActivity.map((activity) => (
+        <div className="container mx-auto px-4 space-y-2">
+            {activities?.map((activity: any) => (
                 <Card key={activity.id}>
                     <CardContent>
                         <p className="mt-2">
-                            <span className="font-bold">{activity.user}</span>
-                            {" "}
-                            <span className="font-semibold underline">{activity.activity}</span>
-                            {" "}
-                            the task
-                            {" "}
-                            <span className="font-semibold">{activity.taskName}</span>
-                            {" "}
-                            in project
-                            {" "}
-                            <span className="font-bold">{activity.projectName}</span>
-                            {" "}
-                            on
-                            {" "}
-                            <span className="font-semibold">{activity.date.toLocaleDateString("en-GB")}</span>
+                            {getIcon(activity.action)}
+                            <div className="flex flex-col space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-slate-900">{activity.user?.name}</span>
+                                    <span className="text-slate-600">{getActionMessage(activity)}</span>
+                                </div>
+                                {activity.details?.old_content && (
+                                    <div className="text-xs italic text-slate-400 bg-slate-50 p-2 rounded border-l-2 border-amber-300">
+                                        Prev: "{activity.details.old_content.substring(0, 60)}..."
+                                    </div>
+                                )}
+                                {activity.details?.info && (
+                                    <span className="text-xs text-slate-400 italic">({activity.details.info})</span>
+                                )}
+                                <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                                    {new Date(activity.created_at).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                </div>
+                            </div>
                         </p>
                     </CardContent>
                 </Card>

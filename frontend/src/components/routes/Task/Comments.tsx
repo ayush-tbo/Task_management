@@ -9,7 +9,7 @@ import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { Edit, Trash2 } from "lucide-react";
 
-function Comments({ taskId } : any) {
+function Comments({ taskId, projectId } : any) {
 
     const { user } = useAuth();
 
@@ -34,8 +34,9 @@ function Comments({ taskId } : any) {
     };
 
     const handleAddComment = async (data: any) => {
+        const payload = {...data, project_id: projectId}
         try{
-            const res = await axios.post(`http://localhost:8080/api/tasks/${taskId}/comments`, data);
+            const res = await axios.post(`http://localhost:8080/api/tasks/${taskId}/comments`, payload);
             handleGetComments();
             reset();
         }
@@ -48,7 +49,7 @@ function Comments({ taskId } : any) {
         const newContent = prompt("Edit your comment:");
         if (!newContent) return;
         try{
-            const res = await axios.put(`http://localhost:8080/api/comments/${commentId}`, { content: newContent });
+            const res = await axios.put(`http://localhost:8080/api/comments/${commentId}`, { content: newContent, task_id: taskId, project_id: projectId });
             handleGetComments();
         }
         catch(err){
@@ -59,7 +60,7 @@ function Comments({ taskId } : any) {
     const handleDelete = async (commentId: string) => {
         if (!window.confirm("Delete this comment?")) return;
         try{
-            const res = await axios.delete(`http://localhost:8080/api/comments/${commentId}`);
+            const res = await axios.delete(`http://localhost:8080/api/comments/${commentId}`, {data: { task_id: taskId, project_id: projectId }});
             handleGetComments();
         }
         catch(err){
