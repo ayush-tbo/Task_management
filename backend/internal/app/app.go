@@ -43,7 +43,7 @@ func NewApplication() (*Application, error) {
 
 	// our services will go here
 	userService := service.NewUserService(userRepository)
-	commentService := service.NewCommentService(commentRepository)
+	commentService := service.NewCommentService(commentRepository, activityRepository)
 	projectService := service.NewProjectService(projectRepository, nil)
 	taskService := service.NewTaskService(taskRepository)
 	activityService := service.NewActivityService(activityRepository)
@@ -57,22 +57,22 @@ func NewApplication() (*Application, error) {
 	// sprintHandler := handler.NewSprintHandler()
 	// taskHandler := handler.NewTaskHandler()
 	middlewareHandler := middleware.UserMiddleware{UserService: *userService}
-	commentHandler := handler.NewCommentHandler(commentService, logger)
+	commentHandler := handler.NewCommentHandler(commentService, activityService, logger)
 	projectHandler := handler.NewProjectHandler(projectService, taskService, logger)
 	taskHandler := handler.NewTaskHandler(taskService, projectService, logger)
-  userHandler := handler.NewUserHandler(userService, logger)
+	userHandler := handler.NewUserHandler(userService, logger)
 	activityHandler := handler.NewActivityHandler(activityService, logger)
 
 	app := &Application{
-		Logger:         logger,
-		UserHandler:    userHandler,
-		Middleware:     middlewareHandler,
-		CommentHandler: commentHandler,
-		ProjectHandler: projectHandler,
-		TaskHandler:    taskHandler,
-		mongoDB:        mongoDB,
+		Logger:          logger,
+		UserHandler:     userHandler,
+		Middleware:      middlewareHandler,
+		ActivityHandler: activityHandler,
+		CommentHandler:  commentHandler,
+		ProjectHandler:  projectHandler,
+		TaskHandler:     taskHandler,
+		mongoDB:         mongoDB,
 	}
-
 
 	return app, nil
 }
