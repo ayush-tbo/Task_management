@@ -18,9 +18,9 @@ type Application struct {
 	CommentHandler  *handler.CommentHandler
 	// LabelHandler        *handler.LabelHandler
 	// NotificationHandler *handler.NotificationHandler
-	// ProjectHandler      *handler.ProjectHandler
+	ProjectHandler *handler.ProjectHandler
 	// SprintHandler       *handler.SprintHandler
-	// TaskHandler         *handler.TaskHandler
+	TaskHandler *handler.TaskHandler
 	UserHandler *handler.UserHandler
 	mongoDB     *mongo.Client
 }
@@ -34,17 +34,21 @@ func NewApplication() (*Application, error) {
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
-	// Our Repositories will go here
+	// our repositories will go here
 	userRepository := repository.NewMongoUserRepository(mongoDB)
 	commentRepository := repository.NewMongoCommentRepository(mongoDB)
+	projectRepository := repository.NewMongoProjectRepository(mongoDB)
+	taskRepository := repository.NewMongoTaskRepository(mongoDB)
 	activityRepository := repository.NewMongoActivityRepository(mongoDB)
 
-	// Our Services will go here
+	// our services will go here
 	userService := service.NewUserService(userRepository)
-	commentService := service.NewCommentService(commentRepository, activityRepository)
+	commentService := service.NewCommentService(commentRepository)
+	projectService := service.NewProjectService(projectRepository, nil)
+	taskService := service.NewTaskService(taskRepository)
 	activityService := service.NewActivityService(activityRepository)
 
-	// // Our Handlers will go here
+	// // our handlers will go here
 	// activityHandler := handler.NewActivityHandler()
 	// commentHandler := handler.NewCommentHandler()
 	// labelHandler := handler.NewLabelHandler()
@@ -53,18 +57,22 @@ func NewApplication() (*Application, error) {
 	// sprintHandler := handler.NewSprintHandler()
 	// taskHandler := handler.NewTaskHandler()
 	middlewareHandler := middleware.UserMiddleware{UserService: *userService}
-	userHandler := handler.NewUserHandler(userService, logger)
-	commentHandler := handler.NewCommentHandler(commentService, activityService, logger)
+	commentHandler := handler.NewCommentHandler(commentService, logger)
+	projectHandler := handler.NewProjectHandler(projectService, taskService, logger)
+	taskHandler := handler.NewTaskHandler(taskService, projectService, logger)
+  userHandler := handler.NewUserHandler(userService, logger)
 	activityHandler := handler.NewActivityHandler(activityService, logger)
 
 	app := &Application{
-		Logger:          logger,
-		Middleware:      middlewareHandler,
-		ActivityHandler: activityHandler,
-		UserHandler:     userHandler,
-		CommentHandler:  commentHandler,
-		mongoDB:         mongoDB,
+		Logger:         logger,
+		UserHandler:    userHandler,
+		Middleware:     middlewareHandler,
+		CommentHandler: commentHandler,
+		ProjectHandler: projectHandler,
+		TaskHandler:    taskHandler,
+		mongoDB:        mongoDB,
 	}
+
 
 	return app, nil
 }

@@ -1,51 +1,379 @@
 package handler
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/floqast/task-management/backend/internal/middleware"
+	"github.com/floqast/task-management/backend/internal/model"
+	"github.com/floqast/task-management/backend/internal/service"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type ProjectHandler struct{}
+type ProjectHandler struct {
+	projectService *service.ProjectService
+	taskService    *service.TaskService
+	logger         *log.Logger
+}
 
-func NewProjectHandler() *ProjectHandler { return &ProjectHandler{} }
+func NewProjectHandler(projectService *service.ProjectService, taskService *service.TaskService, logger *log.Logger) *ProjectHandler {
+	return &ProjectHandler{
+		projectService: projectService,
+		taskService:    taskService,
+		logger:         logger,
+	}
+}
 
 func (h *ProjectHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	user := middleware.GetUser(r)
+	if user == nil || user == model.AnonymousUser {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "you must be logged in to create a project")
+		return
+	}
+	page, pageSize := middleware.GetPaginationParams(r)
+	projects, total, err := h.projectService.FindByUser(r.Context(), user.ID, page, pageSize)
+	if err != nil {
+		h.logger.Printf("ERROR: List Projects: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve projects")
+		return
+	}
+	totalPages := (total + pageSize - 1) / pageSize
+	middleware.WriteJSON(w, http.StatusOK, model.PaginatedResponse[model.Project]{
+		Data: projects,
+		Pagination: model.Pagination{
+			Page:       page,
+			PageSize:   pageSize,
+			TotalItems: total,
+			TotalPages: totalPages,
+		},
+	})
+
 }
 
 func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	user := middleware.GetUser(r)
+	if user == nil || user == model.AnonymousUser {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "you must be logged in to create a project")
+		return
+	}
+	var req model.CreateProjectRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		h.logger.Printf("ERROR: decode create project request: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
+		return
+	}
+	if req.Name == "" {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "project name is required")
+		return
+	}
+	project := &model.Project{
+		ID:          primitive.NewObjectID().Hex(),
+		Name:        req.Name,
+		Description: req.Description,
+		OwnerID:     user.ID,
+		MemberCount: 1,
+		TaskCount:   0,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	err = h.projectService.Create(r.Context(), project)
+	if err != nil {
+		h.logger.Printf("ERROR: create project: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not create project")
+		return
+	}
+	middleware.WriteJSON(w, http.StatusCreated, map[string]any{"project": project})
 }
 
 func (h *ProjectHandler) GetProject(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	user := middleware.GetUser(r)
+	if user == nil || user == model.AnonymousUser {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "you must be logged in to create a project")
+		return
+	}
+	projectID, err := middleware.ReadIDParam(r)
+	if err != nil {
+		h.logger.Printf("ERROR: invalid project id: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
+		return
+	}
+	if projectID == "" {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "project id is required")
+		return
+	}
+	project, err := h.projectService.FindByID(r.Context(), projectID)
+	if err != nil {
+		h.logger.Printf("ERROR: find project by id: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
+		return
+	}
+	if project == nil {
+		middleware.WriteError(w, http.StatusNotFound, "not found", "project not found")
+		return
+	}
+	middleware.WriteJSON(w, http.StatusOK, map[string]any{"project": project})
 }
 
 func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	user := middleware.GetUser(r)
+	if user == nil || user == model.AnonymousUser {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "you must be logged in")
+		return
+	}
+
+	projectID, err := middleware.ReadIDParam(r)
+	if err != nil {
+		h.logger.Printf("ERROR: invalid project id: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
+		return
+	}
+
+	project, err := h.projectService.FindByID(r.Context(), projectID)
+	if err != nil {
+		h.logger.Printf("ERROR: find project: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
+		return
+	}
+	if project == nil {
+		middleware.WriteError(w, http.StatusNotFound, "not found", "project not found")
+		return
+	}
+
+	if project.OwnerID != user.ID {
+		middleware.WriteError(w, http.StatusForbidden, "forbidden", "you are not the owner of this project")
+		return
+	}
+
+	var req model.UpdateProjectRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		h.logger.Printf("ERROR: decode update project request: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
+		return
+	}
+
+	if req.Name != nil {
+		project.Name = *req.Name
+	}
+	if req.Description != nil {
+		project.Description = *req.Description
+	}
+	project.UpdatedAt = time.Now()
+
+	err = h.projectService.Update(r.Context(), project)
+	if err != nil {
+		h.logger.Printf("ERROR: update project: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update project")
+		return
+	}
+
+	middleware.WriteJSON(w, http.StatusOK, map[string]any{"project": project})
 }
 
 func (h *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	user := middleware.GetUser(r)
+	if user == nil || user == model.AnonymousUser {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "you must be logged in")
+		return
+	}
+
+	projectID, err := middleware.ReadIDParam(r)
+	if err != nil {
+		h.logger.Printf("ERROR: invalid project id: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
+		return
+	}
+
+	project, err := h.projectService.FindByID(r.Context(), projectID)
+	if err != nil {
+		h.logger.Printf("ERROR: find project: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
+		return
+	}
+	if project == nil {
+		middleware.WriteError(w, http.StatusNotFound, "not found", "project not found")
+		return
+	}
+
+	if project.OwnerID != user.ID {
+		middleware.WriteError(w, http.StatusForbidden, "forbidden", "you are not the owner of this project")
+		return
+	}
+
+	err = h.projectService.Delete(r.Context(), projectID)
+	if err != nil {
+		h.logger.Printf("ERROR: delete project: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete project")
+		return
+	}
+
+	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
 }
 
 func (h *ProjectHandler) ListProjectMembers(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	projectID, err := middleware.ReadIDParam(r)
+	if err != nil {
+		h.logger.Printf("ERROR: invalid project id: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
+		return
+	}
+
+	members, err := h.projectService.ListMembers(r.Context(), projectID)
+	if err != nil {
+		h.logger.Printf("ERROR: list members: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve members")
+		return
+	}
+
+	middleware.WriteJSON(w, http.StatusOK, map[string]any{"members": members})
 }
 
 func (h *ProjectHandler) AddProjectMember(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	user := middleware.GetUser(r)
+	if user == nil || user == model.AnonymousUser {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "you must be logged in")
+		return
+	}
+
+	projectID, err := middleware.ReadIDParam(r)
+	if err != nil {
+		h.logger.Printf("ERROR: invalid project id: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
+		return
+	}
+
+	project, err := h.projectService.FindByID(r.Context(), projectID)
+	if err != nil {
+		h.logger.Printf("ERROR: find project: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
+		return
+	}
+	if project == nil {
+		middleware.WriteError(w, http.StatusNotFound, "not found", "project not found")
+		return
+	}
+
+	var req model.AddMemberRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		h.logger.Printf("ERROR: decode add member request: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
+		return
+	}
+	if req.UserID == "" {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "user_id is required")
+		return
+	}
+
+	role := req.Role
+	if role == "" {
+		role = model.RoleMember
+	}
+
+	member := &model.ProjectMember{
+		UserID:   req.UserID,
+		Role:     role,
+		JoinedAt: time.Now(),
+	}
+
+	err = h.projectService.AddMember(r.Context(), projectID, member)
+	if err != nil {
+		h.logger.Printf("ERROR: add member: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not add member")
+		return
+	}
+
+	middleware.WriteJSON(w, http.StatusCreated, map[string]any{"member": member})
 }
 
 func (h *ProjectHandler) RemoveProjectMember(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	user := middleware.GetUser(r)
+	if user == nil || user == model.AnonymousUser {
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "you must be logged in")
+		return
+	}
+
+	projectID, err := middleware.ReadIDParam(r)
+	if err != nil {
+		h.logger.Printf("ERROR: invalid project id: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
+		return
+	}
+
+	userID, err := middleware.ReadURLParam(r, "userId")
+	if err != nil {
+		h.logger.Printf("ERROR: invalid user id: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid user id")
+		return
+	}
+
+	project, err := h.projectService.FindByID(r.Context(), projectID)
+	if err != nil {
+		h.logger.Printf("ERROR: find project: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
+		return
+	}
+	if project == nil {
+		middleware.WriteError(w, http.StatusNotFound, "not found", "project not found")
+		return
+	}
+
+	if project.OwnerID != user.ID {
+		middleware.WriteError(w, http.StatusForbidden, "forbidden", "only the owner can remove members")
+		return
+	}
+
+	err = h.projectService.RemoveMember(r.Context(), projectID, userID)
+	if err != nil {
+		h.logger.Printf("ERROR: remove member: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not remove member")
+		return
+	}
+
+	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
 }
 
 func (h *ProjectHandler) GetStatusChart(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	projectID, err := middleware.ReadIDParam(r)
+	if err != nil {
+		h.logger.Printf("ERROR: invalid project id: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
+		return
+	}
+
+	entries, err := h.taskService.CountByStatus(r.Context(), projectID)
+	if err != nil {
+		h.logger.Printf("ERROR: count by status: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve chart")
+		return
+	}
+
+	middleware.WriteJSON(w, http.StatusOK, model.StatusChart{
+		ProjectID: projectID,
+		Data:      entries,
+	})
 }
 
 func (h *ProjectHandler) GetPriorityChart(w http.ResponseWriter, r *http.Request) {
-	middleware.WriteError(w, http.StatusNotImplemented, "not_implemented", "endpoint stub")
+	projectID, err := middleware.ReadIDParam(r)
+	if err != nil {
+		h.logger.Printf("ERROR: invalid project id: %v", err)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
+		return
+	}
+
+	entries, err := h.taskService.CountByPriority(r.Context(), projectID)
+	if err != nil {
+		h.logger.Printf("ERROR: count by priority: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve chart")
+		return
+	}
+
+	middleware.WriteJSON(w, http.StatusOK, model.PriorityChart{
+		ProjectID: projectID,
+		Data:      entries,
+	})
 }
