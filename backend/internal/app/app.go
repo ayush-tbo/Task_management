@@ -17,9 +17,9 @@ type Application struct {
 	CommentHandler *handler.CommentHandler
 	// LabelHandler        *handler.LabelHandler
 	// NotificationHandler *handler.NotificationHandler
-	// ProjectHandler      *handler.ProjectHandler
+	ProjectHandler *handler.ProjectHandler
 	// SprintHandler       *handler.SprintHandler
-	// TaskHandler         *handler.TaskHandler
+	TaskHandler *handler.TaskHandler
 	UserHandler *handler.UserHandler
 	Middleware  middleware.UserMiddleware
 	mongoDB     *mongo.Client
@@ -34,15 +34,19 @@ func NewApplication() (*Application, error) {
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
-	// Our Repositories will go here
+	// our repositories will go here
 	userRepository := repository.NewMongoUserRepository(mongoDB)
 	commentRepository := repository.NewMongoCommentRepository(mongoDB)
+	projectRepository := repository.NewMongoProjectRepository(mongoDB)
+	taskRepository := repository.NewMongoTaskRepository(mongoDB)
 
-	// Our Services will go here
+	// our services will go here
 	userService := service.NewUserService(userRepository)
 	commentService := service.NewCommentService(commentRepository)
+	projectService := service.NewProjectService(projectRepository, nil)
+	taskService := service.NewTaskService(taskRepository)
 
-	// // Our Handlers will go here
+	// // our handlers will go here
 	// activityHandler := handler.NewActivityHandler()
 	// commentHandler := handler.NewCommentHandler()
 	// labelHandler := handler.NewLabelHandler()
@@ -53,12 +57,16 @@ func NewApplication() (*Application, error) {
 	userHandler := handler.NewUserHandler(userService, logger)
 	middlewareHandler := middleware.UserMiddleware{UserService: *userService}
 	commentHandler := handler.NewCommentHandler(commentService, logger)
+	projectHandler := handler.NewProjectHandler(projectService, taskService, logger)
+	taskHandler := handler.NewTaskHandler(taskService, projectService, logger)
 
 	app := &Application{
 		Logger:         logger,
 		UserHandler:    userHandler,
 		Middleware:     middlewareHandler,
 		CommentHandler: commentHandler,
+		ProjectHandler: projectHandler,
+		TaskHandler:    taskHandler,
 		mongoDB:        mongoDB,
 	}
 

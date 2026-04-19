@@ -22,6 +22,30 @@ func SetupRoutes(app *Application) *chi.Mux {
 		r.Get("/api/tasks/{id}/comments", app.Middleware.RequireUser(app.CommentHandler.ListComments))
 		r.Put("/api/comments/{id}", app.Middleware.RequireUser(app.CommentHandler.UpdateComment))
 		r.Delete("/api/comments/{id}", app.Middleware.RequireUser(app.CommentHandler.DeleteComment))
+
+		// project routes
+		r.Get("/api/projects", app.Middleware.RequireUser(app.ProjectHandler.ListProjects))
+		r.Post("/api/projects", app.Middleware.RequireUser(app.ProjectHandler.CreateProject))
+		r.Get("/api/projects/{id}", app.Middleware.RequireUser(app.ProjectHandler.GetProject))
+		r.Put("/api/projects/{id}", app.Middleware.RequireUser(app.ProjectHandler.UpdateProject))
+		r.Delete("/api/projects/{id}", app.Middleware.RequireUser(app.ProjectHandler.DeleteProject))
+		r.Get("/api/projects/{id}/members", app.Middleware.RequireUser(app.ProjectHandler.ListProjectMembers))
+		r.Post("/api/projects/{id}/members", app.Middleware.RequireUser(app.ProjectHandler.AddProjectMember))
+		r.Delete("/api/projects/{id}/members/{userId}", app.Middleware.RequireUser(app.ProjectHandler.RemoveProjectMember))
+		r.Get("/api/projects/{id}/charts/status", app.Middleware.RequireUser(app.ProjectHandler.GetStatusChart))
+		r.Get("/api/projects/{id}/charts/priority", app.Middleware.RequireUser(app.ProjectHandler.GetPriorityChart))
+
+		// task routes
+		r.Get("/api/projects/{id}/tasks", app.Middleware.RequireUser(app.TaskHandler.ListTasks))
+		r.Post("/api/projects/{id}/tasks", app.Middleware.RequireUser(app.TaskHandler.CreateTask))
+		r.Get("/api/tasks/my", app.Middleware.RequireUser(app.TaskHandler.GetMyTasks))
+		r.Get("/api/tasks/{id}", app.Middleware.RequireUser(app.TaskHandler.GetTask))
+		r.Put("/api/tasks/{id}", app.Middleware.RequireUser(app.TaskHandler.UpdateTask))
+		r.Delete("/api/tasks/{id}", app.Middleware.RequireUser(app.TaskHandler.DeleteTask))
+		r.Put("/api/tasks/{id}/assign", app.Middleware.RequireUser(app.TaskHandler.AssignTask))
+		r.Put("/api/tasks/{id}/status", app.Middleware.RequireUser(app.TaskHandler.UpdateTaskStatus))
+		r.Get("/api/tasks/{id}/time", app.Middleware.RequireUser(app.TaskHandler.GetTaskTimeTracking))
+		r.Put("/api/tasks/{id}/time", app.Middleware.RequireUser(app.TaskHandler.LogTaskTime))
 	})
 
 	// mux.HandleFunc("GET /api/users/me", userH.GetCurrentUser)

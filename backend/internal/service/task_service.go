@@ -1,49 +1,51 @@
 package service
 
 import (
+	"context"
+
+	"github.com/floqast/task-management/backend/internal/model"
 	"github.com/floqast/task-management/backend/internal/repository"
 )
-
-type Services struct {
-	User    *UserService
-	Project *ProjectService
-	Task    *TaskService
-	// Comment      *CommentService
-	Label        *LabelService
-	Activity     *ActivityService
-	Sprint       *SprintService
-	Notification *NotificationService
-}
-
-type ProjectService struct {
-	repo     repository.ProjectRepository
-	activity repository.ActivityRepository
-}
 
 type TaskService struct {
 	repo     repository.TaskRepository
 	activity repository.ActivityRepository
 }
 
-// type CommentService struct {
-// 	repo     repository.CommentRepository
-// 	activity repository.ActivityRepository
-// }
-
-type LabelService struct {
-	repo     repository.LabelRepository
-	activity repository.ActivityRepository
+func NewTaskService(repo repository.TaskRepository) *TaskService {
+	return &TaskService{
+		repo: repo,
+	}
 }
 
-type ActivityService struct {
-	repo repository.ActivityRepository
+func (s *TaskService) FindByID(ctx context.Context, id string) (*model.Task, error) {
+	return s.repo.FindByID(ctx, id)
 }
 
-type SprintService struct {
-	repo     repository.SprintRepository
-	activity repository.ActivityRepository
+func (s *TaskService) FindByProject(ctx context.Context, projectID string, filters repository.TaskFilters, page, pageSize int) ([]model.Task, int, error) {
+	return s.repo.FindByProject(ctx, projectID, filters, page, pageSize)
 }
 
-type NotificationService struct {
-	repo repository.NotificationRepository
+func (s *TaskService) FindByAssignee(ctx context.Context, userID string, filters repository.TaskFilters, page, pageSize int) ([]model.Task, int, error) {
+	return s.repo.FindByAssignee(ctx, userID, filters, page, pageSize)
+}
+
+func (s *TaskService) Create(ctx context.Context, task *model.Task) error {
+	return s.repo.Create(ctx, task)
+}
+
+func (s *TaskService) Update(ctx context.Context, task *model.Task) error {
+	return s.repo.Update(ctx, task)
+}
+
+func (s *TaskService) Delete(ctx context.Context, id string) error {
+	return s.repo.Delete(ctx, id)
+}
+
+func (s *TaskService) CountByStatus(ctx context.Context, projectID string) ([]model.StatusChartEntry, error) {
+	return s.repo.CountByStatus(ctx, projectID)
+}
+
+func (s *TaskService) CountByPriority(ctx context.Context, projectID string) ([]model.PriorityChartEntry, error) {
+	return s.repo.CountByPriority(ctx, projectID)
 }
