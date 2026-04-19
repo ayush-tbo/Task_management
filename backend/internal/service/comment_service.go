@@ -8,12 +8,14 @@ import (
 )
 
 type CommentService struct {
-	repo repository.CommentRepository
+	repo     repository.CommentRepository
+	activity repository.ActivityRepository
 }
 
-func NewCommentService(repo repository.CommentRepository) *CommentService {
+func NewCommentService(repo repository.CommentRepository, activity repository.ActivityRepository) *CommentService {
 	return &CommentService{
-		repo: repo,
+		repo:     repo,
+		activity: activity,
 	}
 }
 

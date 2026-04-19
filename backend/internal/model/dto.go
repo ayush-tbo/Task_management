@@ -53,11 +53,18 @@ type LogTimeRequest struct {
 }
 
 type CreateCommentRequest struct {
-	Content string `json:"content" validate:"required,min=1,max=5000"`
+	Content   string `json:"content" validate:"required,min=1,max=5000"`
+	ProjectID string `json:"project_id"`
 }
 
 type UpdateCommentRequest struct {
-	Content *string `json:"content" validate:"required,min=1,max=5000"`
+	Content   *string `json:"content" validate:"required,min=1,max=5000"`
+	ProjectID string  `json:"project_id"`
+	TaskID    string  `json:"task_id"`
+}
+type DeleteCommentRequest struct {
+	ProjectID string `json:"project_id"`
+	TaskID    string `json:"task_id"`
 }
 
 type CreateLabelRequest struct {

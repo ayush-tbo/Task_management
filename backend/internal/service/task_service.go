@@ -35,9 +35,9 @@ type LabelService struct {
 	activity repository.ActivityRepository
 }
 
-type ActivityService struct {
-	repo repository.ActivityRepository
-}
+// type ActivityService struct {
+// 	repo repository.ActivityRepository
+// }
 
 type SprintService struct {
 	repo     repository.SprintRepository

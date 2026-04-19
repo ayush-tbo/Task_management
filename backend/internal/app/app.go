@@ -12,16 +12,16 @@ import (
 )
 
 type Application struct {
-	Logger *log.Logger
-	// ActivityHandler     *handler.ActivityHandler
-	CommentHandler *handler.CommentHandler
+	Logger          *log.Logger
+	Middleware      middleware.UserMiddleware
+	ActivityHandler *handler.ActivityHandler
+	CommentHandler  *handler.CommentHandler
 	// LabelHandler        *handler.LabelHandler
 	// NotificationHandler *handler.NotificationHandler
 	// ProjectHandler      *handler.ProjectHandler
 	// SprintHandler       *handler.SprintHandler
 	// TaskHandler         *handler.TaskHandler
 	UserHandler *handler.UserHandler
-	Middleware  middleware.UserMiddleware
 	mongoDB     *mongo.Client
 }
 
@@ -37,10 +37,12 @@ func NewApplication() (*Application, error) {
 	// Our Repositories will go here
 	userRepository := repository.NewMongoUserRepository(mongoDB)
 	commentRepository := repository.NewMongoCommentRepository(mongoDB)
+	activityRepository := repository.NewMongoActivityRepository(mongoDB)
 
 	// Our Services will go here
 	userService := service.NewUserService(userRepository)
-	commentService := service.NewCommentService(commentRepository)
+	commentService := service.NewCommentService(commentRepository, activityRepository)
+	activityService := service.NewActivityService(activityRepository)
 
 	// // Our Handlers will go here
 	// activityHandler := handler.NewActivityHandler()
@@ -50,16 +52,18 @@ func NewApplication() (*Application, error) {
 	// projectHandler := handler.NewProjectHandler()
 	// sprintHandler := handler.NewSprintHandler()
 	// taskHandler := handler.NewTaskHandler()
-	userHandler := handler.NewUserHandler(userService, logger)
 	middlewareHandler := middleware.UserMiddleware{UserService: *userService}
-	commentHandler := handler.NewCommentHandler(commentService, logger)
+	userHandler := handler.NewUserHandler(userService, logger)
+	commentHandler := handler.NewCommentHandler(commentService, activityService, logger)
+	activityHandler := handler.NewActivityHandler(activityService, logger)
 
 	app := &Application{
-		Logger:         logger,
-		UserHandler:    userHandler,
-		Middleware:     middlewareHandler,
-		CommentHandler: commentHandler,
-		mongoDB:        mongoDB,
+		Logger:          logger,
+		Middleware:      middlewareHandler,
+		ActivityHandler: activityHandler,
+		UserHandler:     userHandler,
+		CommentHandler:  commentHandler,
+		mongoDB:         mongoDB,
 	}
 
 	return app, nil

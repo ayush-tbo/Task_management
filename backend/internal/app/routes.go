@@ -22,6 +22,9 @@ func SetupRoutes(app *Application) *chi.Mux {
 		r.Get("/api/tasks/{id}/comments", app.Middleware.RequireUser(app.CommentHandler.ListComments))
 		r.Put("/api/comments/{id}", app.Middleware.RequireUser(app.CommentHandler.UpdateComment))
 		r.Delete("/api/comments/{id}", app.Middleware.RequireUser(app.CommentHandler.DeleteComment))
+
+		r.Get("/api/projects/{id}/activity", app.Middleware.RequireUser(app.ActivityHandler.GetProjectActivity))
+		r.Get("/api/tasks/{id}/activity", app.Middleware.RequireUser(app.ActivityHandler.GetTaskActivity))
 	})
 
 	// mux.HandleFunc("GET /api/users/me", userH.GetCurrentUser)

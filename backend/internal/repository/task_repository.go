@@ -58,11 +58,11 @@ type LabelRepository interface {
 	Delete(ctx context.Context, id string) error
 }
 
-type ActivityRepository interface {
-	FindByProject(ctx context.Context, projectID string, action *model.ActivityAction, page, pageSize int) ([]model.ActivityEntry, int, error)
-	FindByTask(ctx context.Context, taskID string, page, pageSize int) ([]model.ActivityEntry, int, error)
-	Create(ctx context.Context, entry *model.ActivityEntry) error
-}
+// type ActivityRepository interface {
+// 	FindByProject(ctx context.Context, projectID string, action *model.ActivityAction, page, pageSize int) ([]model.ActivityEntry, int, error)
+// 	FindByTask(ctx context.Context, taskID string, page, pageSize int) ([]model.ActivityEntry, int, error)
+// 	Create(ctx context.Context, entry *model.ActivityEntry) error
+// }
 
 type SprintRepository interface {
 	FindByProject(ctx context.Context, projectID string, activeOnly bool) ([]model.Sprint, error)
