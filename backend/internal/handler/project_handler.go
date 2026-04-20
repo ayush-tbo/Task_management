@@ -1,8 +1,9 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -13,16 +14,18 @@ import (
 )
 
 type ProjectHandler struct {
-	projectService *service.ProjectService
-	taskService    *service.TaskService
-	logger         *log.Logger
+	projectService  *service.ProjectService
+	taskService     *service.TaskService
+	activityService *service.ActivityService
+	logger          *slog.Logger
 }
 
-func NewProjectHandler(projectService *service.ProjectService, taskService *service.TaskService, logger *log.Logger) *ProjectHandler {
+func NewProjectHandler(projectService *service.ProjectService, taskService *service.TaskService, activityService *service.ActivityService, logger *slog.Logger) *ProjectHandler {
 	return &ProjectHandler{
-		projectService: projectService,
-		taskService:    taskService,
-		logger:         logger,
+		projectService:  projectService,
+		taskService:     taskService,
+		activityService: activityService,
+		logger:          logger,
 	}
 }
 
@@ -35,7 +38,7 @@ func (h *ProjectHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
 	page, pageSize := middleware.GetPaginationParams(r)
 	projects, total, err := h.projectService.FindByUser(r.Context(), user.ID, page, pageSize)
 	if err != nil {
-		h.logger.Printf("ERROR: List Projects: %v", err)
+		h.logger.Error("List Projects", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve projects")
 		return
 	}
@@ -61,7 +64,7 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateProjectRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decode create project request: %v", err)
+		h.logger.Error("decode create project request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -81,10 +84,26 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.projectService.Create(r.Context(), project)
 	if err != nil {
-		h.logger.Printf("ERROR: create project: %v", err)
+		h.logger.Error("create project", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not create project")
 		return
 	}
+
+	go func() {
+		entry := &model.ActivityEntry{
+			ID:        primitive.NewObjectID().Hex(),
+			ProjectID: project.ID,
+			UserID:    user.ID,
+			User:      user,
+			Action:    model.ActionMemberAdded,
+			Details:   map[string]interface{}{"project_name": project.Name},
+			CreatedAt: time.Now(),
+		}
+		if err := h.activityService.Create(context.Background(), entry); err != nil {
+			h.logger.Error("activity log", "error", err)
+		}
+	}()
+
 	middleware.WriteJSON(w, http.StatusCreated, map[string]any{"project": project})
 }
 
@@ -96,7 +115,7 @@ func (h *ProjectHandler) GetProject(w http.ResponseWriter, r *http.Request) {
 	}
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid project id: %v", err)
+		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
@@ -106,7 +125,7 @@ func (h *ProjectHandler) GetProject(w http.ResponseWriter, r *http.Request) {
 	}
 	project, err := h.projectService.FindByID(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: find project by id: %v", err)
+		h.logger.Error("find project by id", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
 		return
 	}
@@ -126,14 +145,14 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid project id: %v", err)
+		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
 
 	project, err := h.projectService.FindByID(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: find project: %v", err)
+		h.logger.Error("find project", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
 		return
 	}
@@ -150,7 +169,7 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	var req model.UpdateProjectRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decode update project request: %v", err)
+		h.logger.Error("decode update project request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -165,7 +184,7 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 
 	err = h.projectService.Update(r.Context(), project)
 	if err != nil {
-		h.logger.Printf("ERROR: update project: %v", err)
+		h.logger.Error("update project", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update project")
 		return
 	}
@@ -182,14 +201,14 @@ func (h *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid project id: %v", err)
+		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
 
 	project, err := h.projectService.FindByID(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: find project: %v", err)
+		h.logger.Error("find project", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
 		return
 	}
@@ -205,7 +224,7 @@ func (h *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 
 	err = h.projectService.Delete(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: delete project: %v", err)
+		h.logger.Error("delete project", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete project")
 		return
 	}
@@ -216,14 +235,14 @@ func (h *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 func (h *ProjectHandler) ListProjectMembers(w http.ResponseWriter, r *http.Request) {
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid project id: %v", err)
+		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
 
 	members, err := h.projectService.ListMembers(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: list members: %v", err)
+		h.logger.Error("list members", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve members")
 		return
 	}
@@ -240,14 +259,14 @@ func (h *ProjectHandler) AddProjectMember(w http.ResponseWriter, r *http.Request
 
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid project id: %v", err)
+		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
 
 	project, err := h.projectService.FindByID(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: find project: %v", err)
+		h.logger.Error("find project", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
 		return
 	}
@@ -259,7 +278,7 @@ func (h *ProjectHandler) AddProjectMember(w http.ResponseWriter, r *http.Request
 	var req model.AddMemberRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decode add member request: %v", err)
+		h.logger.Error("decode add member request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -281,10 +300,25 @@ func (h *ProjectHandler) AddProjectMember(w http.ResponseWriter, r *http.Request
 
 	err = h.projectService.AddMember(r.Context(), projectID, member)
 	if err != nil {
-		h.logger.Printf("ERROR: add member: %v", err)
+		h.logger.Error("add member", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not add member")
 		return
 	}
+
+	go func() {
+		entry := &model.ActivityEntry{
+			ID:        primitive.NewObjectID().Hex(),
+			ProjectID: projectID,
+			UserID:    user.ID,
+			User:      user,
+			Action:    model.ActionMemberAdded,
+			Details:   map[string]interface{}{"member_user_id": req.UserID, "role": string(role)},
+			CreatedAt: time.Now(),
+		}
+		if err := h.activityService.Create(context.Background(), entry); err != nil {
+			h.logger.Error("activity log", "error", err)
+		}
+	}()
 
 	middleware.WriteJSON(w, http.StatusCreated, map[string]any{"member": member})
 }
@@ -298,21 +332,21 @@ func (h *ProjectHandler) RemoveProjectMember(w http.ResponseWriter, r *http.Requ
 
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid project id: %v", err)
+		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
 
 	userID, err := middleware.ReadURLParam(r, "userId")
 	if err != nil {
-		h.logger.Printf("ERROR: invalid user id: %v", err)
+		h.logger.Error("invalid user id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid user id")
 		return
 	}
 
 	project, err := h.projectService.FindByID(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: find project: %v", err)
+		h.logger.Error("find project", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
 		return
 	}
@@ -328,10 +362,25 @@ func (h *ProjectHandler) RemoveProjectMember(w http.ResponseWriter, r *http.Requ
 
 	err = h.projectService.RemoveMember(r.Context(), projectID, userID)
 	if err != nil {
-		h.logger.Printf("ERROR: remove member: %v", err)
+		h.logger.Error("remove member", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not remove member")
 		return
 	}
+
+	go func() {
+		entry := &model.ActivityEntry{
+			ID:        primitive.NewObjectID().Hex(),
+			ProjectID: projectID,
+			UserID:    user.ID,
+			User:      user,
+			Action:    model.ActionMemberRemoved,
+			Details:   map[string]interface{}{"removed_user_id": userID},
+			CreatedAt: time.Now(),
+		}
+		if err := h.activityService.Create(context.Background(), entry); err != nil {
+			h.logger.Error("activity log", "error", err)
+		}
+	}()
 
 	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
 }
@@ -339,14 +388,14 @@ func (h *ProjectHandler) RemoveProjectMember(w http.ResponseWriter, r *http.Requ
 func (h *ProjectHandler) GetStatusChart(w http.ResponseWriter, r *http.Request) {
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid project id: %v", err)
+		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
 
 	entries, err := h.taskService.CountByStatus(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: count by status: %v", err)
+		h.logger.Error("count by status", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve chart")
 		return
 	}
@@ -360,14 +409,14 @@ func (h *ProjectHandler) GetStatusChart(w http.ResponseWriter, r *http.Request) 
 func (h *ProjectHandler) GetPriorityChart(w http.ResponseWriter, r *http.Request) {
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid project id: %v", err)
+		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
 
 	entries, err := h.taskService.CountByPriority(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: count by priority: %v", err)
+		h.logger.Error("count by priority", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve chart")
 		return
 	}

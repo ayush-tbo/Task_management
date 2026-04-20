@@ -3,7 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"time"
@@ -17,10 +17,10 @@ import (
 
 type UserHandler struct {
 	userService *service.UserService
-	logger      *log.Logger
+	logger      *slog.Logger
 }
 
-func NewUserHandler(userService *service.UserService, logger *log.Logger) *UserHandler {
+func NewUserHandler(userService *service.UserService, logger *slog.Logger) *UserHandler {
 	return &UserHandler{
 		userService: userService,
 		logger:      logger,
@@ -77,7 +77,7 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decoding register request : %v", err)
+		h.logger.Error("decoding register request ", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request payload")
 		return
 	}
@@ -88,8 +88,13 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.userService.FindByEmail(r.Context(), req.Email)
-	if err == nil {
+	existingUser, err := h.userService.FindByEmail(r.Context(), req.Email)
+	if err != nil {
+		h.logger.Error("findByEmail", "error", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
+		return
+	}
+	if existingUser != nil {
 		middleware.WriteError(w, http.StatusConflict, "conflict", "Email Id already present")
 		return
 	}
@@ -108,28 +113,28 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	err = SetUserPassword(&user.PasswordHash, req.Password)
 	if err != nil {
-		h.logger.Printf("ERROR: setUserPassword %v", err)
+		h.logger.Error("setUserPassword", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
 
 	err = h.userService.Create(r.Context(), user)
 	if err != nil {
-		h.logger.Printf("ERROR: create %v", err)
+		h.logger.Error("create", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
 
 	token, err := middleware.GenerateToken(user.ID, 24*time.Hour, middleware.ScopeAuth)
 	if err != nil {
-		h.logger.Printf("ERROR: generateToken: %v", err)
+		h.logger.Error("generateToken", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
 
 	err = h.userService.CreateToken(r.Context(), token)
 	if err != nil {
-		h.logger.Printf("ERROR: createToken: %v", err)
+		h.logger.Error("createToken", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
@@ -147,14 +152,14 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decoding login request : %v", err)
+		h.logger.Error("decoding login request ", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request payload")
 		return
 	}
 
 	user, err := h.userService.FindByEmail(r.Context(), req.Email)
 	if err != nil {
-		h.logger.Printf("ERROR: findByEmail: %v", err)
+		h.logger.Error("findByEmail", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
@@ -172,14 +177,14 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	token, err := middleware.GenerateToken(user.ID, 24*time.Hour, middleware.ScopeAuth)
 	if err != nil {
-		h.logger.Printf("ERROR: generateToken: %v", err)
+		h.logger.Error("generateToken", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
 
 	err = h.userService.CreateToken(r.Context(), token)
 	if err != nil {
-		h.logger.Printf("ERROR: createToken: %v", err)
+		h.logger.Error("createToken", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
@@ -193,14 +198,14 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
 	userID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: readIDParam: %v", err)
+		h.logger.Error("readIDParam", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid user id")
 		return
 	}
 
 	user, err := h.userService.FindByID(r.Context(), userID)
 	if err != nil {
-		h.logger.Printf("ERROR: findByID: %v", err)
+		h.logger.Error("findByID", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
@@ -211,7 +216,7 @@ func (h *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 	userID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: readIDParam: %v", err)
+		h.logger.Error("readIDParam", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid user id")
 		return
 	}
@@ -224,7 +229,7 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 
 	existingUser, err := h.userService.FindByID(r.Context(), userID)
 	if err != nil {
-		h.logger.Printf("ERROR: findByID: %v", err)
+		h.logger.Error("findByID", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
@@ -243,7 +248,7 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 	var input model.UpdateUserRequest
 	err = json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
-		h.logger.Printf("ERROR: decodingUpdateRequest: %v", err)
+		h.logger.Error("decodingUpdateRequest", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request payload")
 		return
 	}
@@ -257,7 +262,7 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 	if input.Password != nil && *input.Password != "" {
 		err = SetUserPassword(&existingUser.PasswordHash, *input.Password)
 		if err != nil {
-			h.logger.Printf("ERROR: setUserPassword %v", err)
+			h.logger.Error("setUserPassword", "error", err)
 			middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 			return
 		}
@@ -266,7 +271,7 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 
 	err = h.userService.Update(r.Context(), existingUser)
 	if err != nil {
-		h.logger.Printf("ERROR: update: %v", err)
+		h.logger.Error("update", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
@@ -278,7 +283,7 @@ func (h *UserHandler) AllUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.userService.GetAllUsers(r.Context())
 
 	if err != nil {
-		h.logger.Printf("ERROR: getAllUsers: %v", err)
+		h.logger.Error("getAllUsers", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve users")
 		return
 	}

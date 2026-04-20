@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -16,10 +16,10 @@ import (
 type CommentHandler struct {
 	commentService *service.CommentService
 	activity       *service.ActivityService
-	logger         *log.Logger
+	logger         *slog.Logger
 }
 
-func NewCommentHandler(commentService *service.CommentService, activity *service.ActivityService, logger *log.Logger) *CommentHandler {
+func NewCommentHandler(commentService *service.CommentService, activity *service.ActivityService, logger *slog.Logger) *CommentHandler {
 	return &CommentHandler{
 		commentService: commentService,
 		activity:       activity,
@@ -30,14 +30,14 @@ func NewCommentHandler(commentService *service.CommentService, activity *service
 func (h *CommentHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: readIDParam: %v", err)
+		h.logger.Error("readIDParam", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	comments, err := h.commentService.FindByTask(r.Context(), taskID)
 	if err != nil {
-		h.logger.Printf("ERROR: findByTask: %v", err)
+		h.logger.Error("findByTask", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve comments")
 		return
 	}
@@ -52,7 +52,7 @@ func (h *CommentHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: readIDParam: %v", err)
+		h.logger.Error("readIDParam", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
@@ -67,7 +67,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decoding create comment request: %v", err)
+		h.logger.Error("decoding create comment request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request payload")
 		return
 	}
@@ -84,7 +84,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 	err = h.commentService.Create(r.Context(), comment)
 	if err != nil {
-		h.logger.Printf("ERROR: create %v", err)
+		h.logger.Error("create", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
@@ -104,7 +104,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		err := h.activity.Create(context.Background(), activity)
 
 		if err != nil {
-			h.logger.Printf("ERROR: Activity Logging Error: %v", err)
+			h.logger.Error("Activity Logging Error", "error", err)
 		}
 	}()
 
@@ -114,7 +114,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 	commentID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: readIDParam: %v", err)
+		h.logger.Error("readIDParam", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid comment id")
 		return
 	}
@@ -127,7 +127,7 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 
 	existingComment, err := h.commentService.FindByID(r.Context(), commentID)
 	if err != nil {
-		h.logger.Printf("ERROR: findByID: %v", err)
+		h.logger.Error("findByID", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
@@ -148,7 +148,7 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
-		h.logger.Printf("ERROR: decoding update comment request: %v", err)
+		h.logger.Error("decoding update comment request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request payload")
 		return
 	}
@@ -160,7 +160,7 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 
 	err = h.commentService.Update(r.Context(), existingComment)
 	if err != nil {
-		h.logger.Printf("ERROR: update: %v", err)
+		h.logger.Error("update", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
@@ -180,7 +180,7 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		err := h.activity.Create(context.Background(), activity)
 
 		if err != nil {
-			h.logger.Printf("ERROR: Activity Logging Error: %v", err)
+			h.logger.Error("Activity Logging Error", "error", err)
 		}
 	}()
 
@@ -190,7 +190,7 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	commentID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: readIDParam: %v", err)
+		h.logger.Error("readIDParam", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid comment id")
 		return
 	}
@@ -203,7 +203,7 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 
 	existingComment, err := h.commentService.FindByID(r.Context(), commentID)
 	if err != nil {
-		h.logger.Printf("ERROR: findByID: %v", err)
+		h.logger.Error("findByID", "error", err)
 		middleware.WriteError(w, http.StatusNotFound, "notFound", "Comment not found")
 		return
 	}
@@ -217,14 +217,14 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
-		h.logger.Printf("ERROR: decoding delete comment request: %v", err)
+		h.logger.Error("decoding delete comment request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request payload")
 		return
 	}
 
 	err = h.commentService.Delete(r.Context(), commentID)
 	if err != nil {
-		h.logger.Printf("ERROR: delete: %v", err)
+		h.logger.Error("delete", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "delete failed")
 	}
 
@@ -243,7 +243,7 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 		err := h.activity.Create(context.Background(), activity)
 
 		if err != nil {
-			h.logger.Printf("ERROR: Activity Logging Error: %v", err)
+			h.logger.Error("Activity Logging Error", "error", err)
 		}
 	}()
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -15,10 +14,7 @@ import (
 
 func main() {
 
-	err := godotenv.Load()
-	if err != nil {
-		log.Println(".env file not found, using system environment variables")
-	}
+	_ = godotenv.Load() // optional: .env file not required when env vars are set externally
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -27,7 +23,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	application.Logger.Printf("We are running on port %s \n", port)
+	application.Logger.Info("server starting", "port", port)
 
 	r := app.SetupRoutes(application)
 
@@ -43,7 +39,7 @@ func main() {
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.yaml"),
 	))
-	application.Logger.Printf("Swagger UI: http://localhost:%s/swagger/", port)
+	application.Logger.Info("swagger ui available", "url", fmt.Sprintf("http://localhost:%s/swagger/", port))
 
 	corsHandler := cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000"},
@@ -64,6 +60,7 @@ func main() {
 
 	err = server.ListenAndServe()
 	if err != nil {
-		application.Logger.Fatal(err)
+		application.Logger.Error("server failed", "error", err)
+		os.Exit(1)
 	}
 }
