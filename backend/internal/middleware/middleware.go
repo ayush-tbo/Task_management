@@ -59,9 +59,14 @@ func (um *UserMiddleware) Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
+		if token == nil {
+			WriteError(w, http.StatusUnauthorized, "unauthorized", "token expired")
+			return
+		}
+
 		user, err := um.UserService.FindByID(r.Context(), token.UserID)
-		if user == nil {
-			WriteError(w, http.StatusUnauthorized, "Token Expired", "token expired or invalid")
+		if err != nil || user == nil {
+			WriteError(w, http.StatusUnauthorized, "unauthorized", "user not found")
 			return
 		}
 

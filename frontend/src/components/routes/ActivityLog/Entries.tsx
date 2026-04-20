@@ -55,7 +55,7 @@ function Entries({ projectId, taskId }: any){
             {activities?.map((activity: any) => (
                 <Card key={activity.id}>
                     <CardContent>
-                        <p className="mt-2">
+                        <div className="mt-2">
                             {getIcon(activity.action)}
                             <div className="flex flex-col space-y-1">
                                 <div className="flex items-center gap-2">
@@ -74,7 +74,7 @@ function Entries({ projectId, taskId }: any){
                                     {new Date(activity.created_at).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                                 </div>
                             </div>
-                        </p>
+                        </div>
                     </CardContent>
                 </Card>
             ))}

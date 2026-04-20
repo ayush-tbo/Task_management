@@ -17,7 +17,7 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println(".env file not found, using system environment variables")
 	}
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -46,7 +46,7 @@ func main() {
 	application.Logger.Printf("Swagger UI: http://localhost:%s/swagger/", port)
 
 	corsHandler := cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173"},
+		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},

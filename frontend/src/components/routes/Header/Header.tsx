@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, PenBox } from "lucide-react";
+import { Bell, LayoutDashboard, PenBox } from "lucide-react";
 import Profile from "./Profile";
 
 function Header() {
@@ -15,6 +15,11 @@ function Header() {
                     <Link to="/dashboard" className="text-gray-600 hover:text-blue-800 flex items-center gap-2">
                         <Button variant="outline">
                             <LayoutDashboard size={18} /><span className="hidden md:inline">Dashboard</span>
+                        </Button>
+                    </Link>
+                    <Link to="/notifications" className="text-gray-600 hover:text-blue-800 flex items-center gap-2">
+                        <Button variant="outline">
+                            <Bell size={18} /><span className="hidden md:inline">Notifications</span>
                         </Button>
                     </Link>
                     <Link to="/addEdit" className="flex items-center gap-2">

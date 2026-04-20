@@ -13,6 +13,7 @@ import ActivityLog from "./components/routes/ActivityLog/ActivityLog";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/routes/Authentication/ProtectedRoutes";
 import axios from "axios";
+import Notifications from "./components/routes/Notifications/Notifications";
 
 function App() {
 
@@ -23,6 +24,18 @@ function App() {
     }
     return config;
   });
+
+  axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+      }
+      return Promise.reject(error);
+    }
+  )
   
   return (
     <AuthProvider>
@@ -38,6 +51,7 @@ function App() {
           <Route path="/task/:id" element={<ProtectedRoute><Task /></ProtectedRoute>} />
           <Route path="/addEdit" element={<ProtectedRoute><AddEditTask /></ProtectedRoute>} />
           <Route path="/activity" element={<ProtectedRoute><ActivityLog /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

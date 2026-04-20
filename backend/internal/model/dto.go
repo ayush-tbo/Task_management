@@ -136,10 +136,17 @@ type PaginatedResponse[T any] struct {
 	Pagination Pagination `json:"pagination"`
 }
 
-type NotificationListResponse struct {
-	Data        []Notification `json:"data"`
-	Pagination  Pagination     `json:"pagination"`
-	UnreadCount int            `json:"unread_count"`
+// type NotificationListResponse struct {
+// 	Data        []Notification `json:"data"`
+// 	Pagination  Pagination     `json:"pagination"`
+// 	UnreadCount int            `json:"unread_count"`
+// }
+
+type CreateNotificationRequest struct {
+	Title         string  `json:"title"`
+	Message       string  `json:"message"`
+	ReferenceType *string `json:"reference_type,omitempty"`
+	ReferenceID   *string `json:"reference_id,omitempty"`
 }
 
 type StatusChartEntry struct {
