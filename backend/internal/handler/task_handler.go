@@ -1,8 +1,9 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -14,23 +15,25 @@ import (
 )
 
 type TaskHandler struct {
-	taskService    *service.TaskService
-	projectService *service.ProjectService
-	logger         *log.Logger
+	taskService     *service.TaskService
+	projectService  *service.ProjectService
+	activityService *service.ActivityService
+	logger          *slog.Logger
 }
 
-func NewTaskHandler(taskService *service.TaskService, projectService *service.ProjectService, logger *log.Logger) *TaskHandler {
+func NewTaskHandler(taskService *service.TaskService, projectService *service.ProjectService, activityService *service.ActivityService, logger *slog.Logger) *TaskHandler {
 	return &TaskHandler{
-		taskService:    taskService,
-		projectService: projectService,
-		logger:         logger,
+		taskService:     taskService,
+		projectService:  projectService,
+		activityService: activityService,
+		logger:          logger,
 	}
 }
 
 func (h *TaskHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid project id: %v", err)
+		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
@@ -40,7 +43,7 @@ func (h *TaskHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 
 	tasks, total, err := h.taskService.FindByProject(r.Context(), projectID, filters, page, pageSize)
 	if err != nil {
-		h.logger.Printf("ERROR: list tasks: %v", err)
+		h.logger.Error("list tasks", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve tasks")
 		return
 	}
@@ -66,14 +69,14 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid project id: %v", err)
+		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
 
 	project, err := h.projectService.FindByID(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: find project: %v", err)
+		h.logger.Error("find project", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
 		return
 	}
@@ -85,7 +88,7 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateTaskRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decode create task request: %v", err)
+		h.logger.Error("decode create task request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -121,10 +124,26 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Create(r.Context(), task)
 	if err != nil {
-		h.logger.Printf("ERROR: create task: %v", err)
+		h.logger.Error("create task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not create task")
 		return
 	}
+
+	go func() {
+		entry := &model.ActivityEntry{
+			ID:        primitive.NewObjectID().Hex(),
+			ProjectID: projectID,
+			TaskID:    &task.ID,
+			UserID:    user.ID,
+			User:      user,
+			Action:    model.ActionTaskCreated,
+			Details:   map[string]interface{}{"task_title": task.Title},
+			CreatedAt: time.Now(),
+		}
+		if err := h.activityService.Create(context.Background(), entry); err != nil {
+			h.logger.Error("activity log", "error", err)
+		}
+	}()
 
 	middleware.WriteJSON(w, http.StatusCreated, map[string]any{"task": task})
 }
@@ -132,14 +151,14 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid task id: %v", err)
+		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	task, err := h.taskService.FindByID(r.Context(), taskID)
 	if err != nil {
-		h.logger.Printf("ERROR: find task: %v", err)
+		h.logger.Error("find task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
 		return
 	}
@@ -160,14 +179,14 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid task id: %v", err)
+		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	task, err := h.taskService.FindByID(r.Context(), taskID)
 	if err != nil {
-		h.logger.Printf("ERROR: find task: %v", err)
+		h.logger.Error("find task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
 		return
 	}
@@ -179,7 +198,7 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	var req model.UpdateTaskRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decode update task request: %v", err)
+		h.logger.Error("decode update task request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -212,10 +231,26 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Update(r.Context(), task)
 	if err != nil {
-		h.logger.Printf("ERROR: update task: %v", err)
+		h.logger.Error("update task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update task")
 		return
 	}
+
+	go func() {
+		entry := &model.ActivityEntry{
+			ID:        primitive.NewObjectID().Hex(),
+			ProjectID: task.ProjectID,
+			TaskID:    &task.ID,
+			UserID:    user.ID,
+			User:      user,
+			Action:    model.ActionTaskUpdated,
+			Details:   map[string]interface{}{"task_title": task.Title},
+			CreatedAt: time.Now(),
+		}
+		if err := h.activityService.Create(context.Background(), entry); err != nil {
+			h.logger.Error("activity log", "error", err)
+		}
+	}()
 
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"task": task})
 }
@@ -229,14 +264,14 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid task id: %v", err)
+		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	task, err := h.taskService.FindByID(r.Context(), taskID)
 	if err != nil {
-		h.logger.Printf("ERROR: find task: %v", err)
+		h.logger.Error("find task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
 		return
 	}
@@ -247,10 +282,26 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Delete(r.Context(), taskID)
 	if err != nil {
-		h.logger.Printf("ERROR: delete task: %v", err)
+		h.logger.Error("delete task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete task")
 		return
 	}
+
+	go func() {
+		entry := &model.ActivityEntry{
+			ID:        primitive.NewObjectID().Hex(),
+			ProjectID: task.ProjectID,
+			TaskID:    &taskID,
+			UserID:    user.ID,
+			User:      user,
+			Action:    model.ActionTaskDeleted,
+			Details:   map[string]interface{}{"task_title": task.Title},
+			CreatedAt: time.Now(),
+		}
+		if err := h.activityService.Create(context.Background(), entry); err != nil {
+			h.logger.Error("activity log", "error", err)
+		}
+	}()
 
 	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
 }
@@ -264,14 +315,14 @@ func (h *TaskHandler) AssignTask(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid task id: %v", err)
+		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	task, err := h.taskService.FindByID(r.Context(), taskID)
 	if err != nil {
-		h.logger.Printf("ERROR: find task: %v", err)
+		h.logger.Error("find task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
 		return
 	}
@@ -283,7 +334,7 @@ func (h *TaskHandler) AssignTask(w http.ResponseWriter, r *http.Request) {
 	var req model.AssignTaskRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decode assign task request: %v", err)
+		h.logger.Error("decode assign task request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -297,10 +348,26 @@ func (h *TaskHandler) AssignTask(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Update(r.Context(), task)
 	if err != nil {
-		h.logger.Printf("ERROR: assign task: %v", err)
+		h.logger.Error("assign task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not assign task")
 		return
 	}
+
+	go func() {
+		entry := &model.ActivityEntry{
+			ID:        primitive.NewObjectID().Hex(),
+			ProjectID: task.ProjectID,
+			TaskID:    &task.ID,
+			UserID:    user.ID,
+			User:      user,
+			Action:    model.ActionTaskAssigned,
+			Details:   map[string]interface{}{"task_title": task.Title, "assignee_id": req.AssigneeID},
+			CreatedAt: time.Now(),
+		}
+		if err := h.activityService.Create(context.Background(), entry); err != nil {
+			h.logger.Error("activity log", "error", err)
+		}
+	}()
 
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"task": task})
 }
@@ -314,14 +381,14 @@ func (h *TaskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid task id: %v", err)
+		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	task, err := h.taskService.FindByID(r.Context(), taskID)
 	if err != nil {
-		h.logger.Printf("ERROR: find task: %v", err)
+		h.logger.Error("find task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
 		return
 	}
@@ -333,7 +400,7 @@ func (h *TaskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	var req model.UpdateStatusRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decode update status request: %v", err)
+		h.logger.Error("decode update status request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -343,10 +410,26 @@ func (h *TaskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Update(r.Context(), task)
 	if err != nil {
-		h.logger.Printf("ERROR: update task status: %v", err)
+		h.logger.Error("update task status", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update task status")
 		return
 	}
+
+	go func() {
+		entry := &model.ActivityEntry{
+			ID:        primitive.NewObjectID().Hex(),
+			ProjectID: task.ProjectID,
+			TaskID:    &task.ID,
+			UserID:    user.ID,
+			User:      user,
+			Action:    model.ActionStatusChanged,
+			Details:   map[string]interface{}{"task_title": task.Title, "new_status": string(req.Status)},
+			CreatedAt: time.Now(),
+		}
+		if err := h.activityService.Create(context.Background(), entry); err != nil {
+			h.logger.Error("activity log", "error", err)
+		}
+	}()
 
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"task": task})
 }
@@ -354,14 +437,14 @@ func (h *TaskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 func (h *TaskHandler) GetTaskTimeTracking(w http.ResponseWriter, r *http.Request) {
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid task id: %v", err)
+		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	task, err := h.taskService.FindByID(r.Context(), taskID)
 	if err != nil {
-		h.logger.Printf("ERROR: find task: %v", err)
+		h.logger.Error("find task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
 		return
 	}
@@ -387,14 +470,14 @@ func (h *TaskHandler) LogTaskTime(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: invalid task id: %v", err)
+		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	task, err := h.taskService.FindByID(r.Context(), taskID)
 	if err != nil {
-		h.logger.Printf("ERROR: find task: %v", err)
+		h.logger.Error("find task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
 		return
 	}
@@ -406,7 +489,7 @@ func (h *TaskHandler) LogTaskTime(w http.ResponseWriter, r *http.Request) {
 	var req model.LogTimeRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Printf("ERROR: decode log time request: %v", err)
+		h.logger.Error("decode log time request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -423,7 +506,7 @@ func (h *TaskHandler) LogTaskTime(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Update(r.Context(), task)
 	if err != nil {
-		h.logger.Printf("ERROR: log time: %v", err)
+		h.logger.Error("log time", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not log time")
 		return
 	}
@@ -443,7 +526,7 @@ func (h *TaskHandler) GetMyTasks(w http.ResponseWriter, r *http.Request) {
 
 	tasks, total, err := h.taskService.FindByAssignee(r.Context(), user.ID, filters, page, pageSize)
 	if err != nil {
-		h.logger.Printf("ERROR: get my tasks: %v", err)
+		h.logger.Error("get my tasks", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve tasks")
 		return
 	}

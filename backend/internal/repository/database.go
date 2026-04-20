@@ -2,8 +2,7 @@ package repository
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -28,9 +27,10 @@ func ConnectDB() (*mongo.Client, error) {
 
 	err = client.Ping(ctx, nil)
 	if err != nil {
-		log.Fatal("Could not connect to MongoDB:", err)
+		slog.Error("could not connect to MongoDB", "error", err)
+		return nil, err
 	}
 
-	fmt.Println("Connected to MongoDB!")
+	slog.Info("connected to MongoDB")
 	return client, nil
 }

@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/floqast/task-management/backend/internal/middleware"
@@ -11,10 +11,10 @@ import (
 
 type ActivityHandler struct {
 	activityService *service.ActivityService
-	logger          *log.Logger
+	logger          *slog.Logger
 }
 
-func NewActivityHandler(activityService *service.ActivityService, logger *log.Logger) *ActivityHandler {
+func NewActivityHandler(activityService *service.ActivityService, logger *slog.Logger) *ActivityHandler {
 	return &ActivityHandler{
 		activityService: activityService,
 		logger:          logger,
@@ -24,13 +24,13 @@ func NewActivityHandler(activityService *service.ActivityService, logger *log.Lo
 func (h *ActivityHandler) GetProjectActivity(w http.ResponseWriter, r *http.Request) {
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: readIDParam: %v", err)
+		h.logger.Error("readIDParam", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 	}
 
 	activities, err := h.activityService.FindByProject(r.Context(), projectID)
 	if err != nil {
-		h.logger.Printf("ERROR: findByProject: %v", err)
+		h.logger.Error("findByProject", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve activities")
 		return
 	}
@@ -45,14 +45,14 @@ func (h *ActivityHandler) GetProjectActivity(w http.ResponseWriter, r *http.Requ
 func (h *ActivityHandler) GetTaskActivity(w http.ResponseWriter, r *http.Request) {
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: readIDParam: %v", err)
+		h.logger.Error("readIDParam", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	activities, err := h.activityService.FindByTask(r.Context(), taskID)
 	if err != nil {
-		h.logger.Printf("ERROR: findByTask: %v", err)
+		h.logger.Error("findByTask", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve activities")
 		return
 	}

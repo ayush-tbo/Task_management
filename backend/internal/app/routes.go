@@ -52,20 +52,22 @@ func SetupRoutes(app *Application) *chi.Mux {
 		r.Get("/api/notifications", app.Middleware.RequireUser(app.NotificationHandler.ListNotifications))
 		r.Put("/api/notifications/{id}/read", app.Middleware.RequireUser(app.NotificationHandler.MarkNotificationRead))
 		r.Put("/api/notifications/read-all", app.Middleware.RequireUser(app.NotificationHandler.MarkAllNotificationsRead))
+
+		// label routes
+		r.Get("/api/projects/{id}/labels", app.Middleware.RequireUser(app.LabelHandler.ListLabels))
+		r.Post("/api/projects/{id}/labels", app.Middleware.RequireUser(app.LabelHandler.CreateLabel))
+		r.Put("/api/labels/{id}", app.Middleware.RequireUser(app.LabelHandler.UpdateLabel))
+		r.Delete("/api/labels/{id}", app.Middleware.RequireUser(app.LabelHandler.DeleteLabel))
+
+		// sprint routes
+		r.Get("/api/projects/{id}/sprints", app.Middleware.RequireUser(app.SprintHandler.ListSprints))
+		r.Post("/api/projects/{id}/sprints", app.Middleware.RequireUser(app.SprintHandler.CreateSprint))
+		r.Get("/api/sprints/{id}", app.Middleware.RequireUser(app.SprintHandler.GetSprint))
+		r.Put("/api/sprints/{id}", app.Middleware.RequireUser(app.SprintHandler.UpdateSprint))
+		r.Delete("/api/sprints/{id}", app.Middleware.RequireUser(app.SprintHandler.DeleteSprint))
+		r.Post("/api/sprints/{id}/tasks", app.Middleware.RequireUser(app.SprintHandler.AddTaskToSprint))
+		r.Delete("/api/sprints/{id}/tasks", app.Middleware.RequireUser(app.SprintHandler.RemoveTaskFromSprint))
 	})
-
-	// mux.HandleFunc("GET /api/projects/{projectId}/labels", labelH.ListLabels)
-	// mux.HandleFunc("POST /api/projects/{projectId}/labels", labelH.CreateLabel)
-	// mux.HandleFunc("PUT /api/labels/{labelId}", labelH.UpdateLabel)
-	// mux.HandleFunc("DELETE /api/labels/{labelId}", labelH.DeleteLabel)
-
-	// mux.HandleFunc("GET /api/projects/{projectId}/sprints", sprintH.ListSprints)
-	// mux.HandleFunc("POST /api/projects/{projectId}/sprints", sprintH.CreateSprint)
-	// mux.HandleFunc("GET /api/sprints/{sprintId}", sprintH.GetSprint)
-	// mux.HandleFunc("PUT /api/sprints/{sprintId}", sprintH.UpdateSprint)
-	// mux.HandleFunc("DELETE /api/sprints/{sprintId}", sprintH.DeleteSprint)
-	// mux.HandleFunc("POST /api/sprints/{sprintId}/tasks", sprintH.AddTaskToSprint)
-	// mux.HandleFunc("DELETE /api/sprints/{sprintId}/tasks", sprintH.RemoveTaskFromSprint)
 
 	return r
 }

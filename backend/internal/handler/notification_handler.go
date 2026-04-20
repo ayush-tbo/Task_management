@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/floqast/task-management/backend/internal/middleware"
@@ -11,10 +11,10 @@ import (
 
 type NotificationHandler struct {
 	service *service.NotificationService
-	logger  *log.Logger
+	logger  *slog.Logger
 }
 
-func NewNotificationHandler(service *service.NotificationService, logger *log.Logger) *NotificationHandler {
+func NewNotificationHandler(service *service.NotificationService, logger *slog.Logger) *NotificationHandler {
 	return &NotificationHandler{
 		service: service,
 		logger:  logger,
@@ -30,7 +30,7 @@ func (h *NotificationHandler) ListNotifications(w http.ResponseWriter, r *http.R
 
 	notifications, err := h.service.FindByUser(r.Context(), user.ID)
 	if err != nil {
-		h.logger.Printf("ERROR: findByUser: %v", err)
+		h.logger.Error("findByUser", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "Unable to fetch notifications from server")
 		return
 	}
@@ -41,14 +41,14 @@ func (h *NotificationHandler) ListNotifications(w http.ResponseWriter, r *http.R
 func (h *NotificationHandler) MarkNotificationRead(w http.ResponseWriter, r *http.Request) {
 	notificationID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Printf("ERROR: readIDParam: %v", err)
+		h.logger.Error("readIDParam", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid notification id")
 		return
 	}
 
 	err = h.service.MarkRead(r.Context(), notificationID)
 	if err != nil {
-		h.logger.Printf("ERROR: markRead: %v", err)
+		h.logger.Error("markRead", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "server not able to perform operation")
 		return
 	}
@@ -65,7 +65,7 @@ func (h *NotificationHandler) MarkAllNotificationsRead(w http.ResponseWriter, r 
 
 	err := h.service.MarkAllRead(r.Context(), user.ID)
 	if err != nil {
-		h.logger.Printf("ERROR: markAllRead: %v", err)
+		h.logger.Error("markAllRead", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "server not able to perform operation")
 		return
 	}
