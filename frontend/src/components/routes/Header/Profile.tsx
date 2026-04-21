@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { PenBox, Loader2 } from "lucide-react";
 import axios from "axios";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod/src/zod.js";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { editUserSchema } from "@/lib/schema";
 
 function Profile() {

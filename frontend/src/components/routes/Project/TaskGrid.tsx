@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { testingTasks } from "@/lib/static";
+import axios from "axios";
 import TaskCard from "./TaskCard";
 
-function TaskGrid() {
+function TaskGrid({ projectId }: { projectId: string }) {
 
     type Task = {
         id: string;
         title: string;
-        dueDate: Date;
+        due_date?: string;
         description: string;
-        priority: number;
+        priority: string;
         status: string;
-        assignedTo: string;
+        assignee_id?: string;
+        assignee?: { name: string };
     };
 
     const [todoTasks, setTodoTasks] = useState<Task[]>([]);
@@ -20,11 +21,20 @@ function TaskGrid() {
     const [completedTasks, setCompleteTasks] = useState<Task[]>([]);
 
     useEffect(() => {
-        setTodoTasks(testingTasks.filter((t) => t.status === "todo"));
-        setInProgressTasks(testingTasks.filter((t) => t.status === "inProgress"));
-        setReviewTasks(testingTasks.filter((t) => t.status === "review"));
-        setCompleteTasks(testingTasks.filter((t) => t.status === "completed"));
-    }, []);
+        const fetchTasks = async () => {
+            try {
+                const res = await axios.get(`http://localhost:8080/api/projects/${projectId}/tasks`);
+                const tasks: Task[] = res.data.data || [];
+                setTodoTasks(tasks.filter((t) => t.status === "todo"));
+                setInProgressTasks(tasks.filter((t) => t.status === "in_progress"));
+                setReviewTasks(tasks.filter((t) => t.status === "staging_review"));
+                setCompleteTasks(tasks.filter((t) => t.status === "done"));
+            } catch (err) {
+                console.error("Failed to fetch tasks:", err);
+            }
+        };
+        if (projectId) fetchTasks();
+    }, [projectId]);
 
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
