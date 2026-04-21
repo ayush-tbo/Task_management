@@ -44,7 +44,7 @@ export const testingTasks = [
         assignedTo: "Meet K."
     },
     {
-        id: 2,
+        id: "2",
         title: "Database schema migration",
         dueDate: new Date("2026-03-22T14:30:00Z"),
         description: "Write initial SQL migrations for the user and billing tables.",
@@ -53,7 +53,7 @@ export const testingTasks = [
         assignedTo: "Meet K."
     },
     {
-        id: 3,
+        id: "3",
         title: "Implement User Authentication",
         dueDate: new Date("2026-03-27T17:00:00Z"),
         description: "Add JWT based auth in the Go backend and set up protected routes in React.",
@@ -62,7 +62,7 @@ export const testingTasks = [
         assignedTo: "Adarsh K."
     },
     {
-        id: 4,
+        id: "4",
         title: "Create Wallet Integration UI",
         dueDate: new Date("2026-03-29T12:00:00Z"),
         description: "Build reusable shadcn/ui components for the wallet connection modal.",
@@ -71,7 +71,7 @@ export const testingTasks = [
         assignedTo: "Adarsh K."
     },
     {
-        id: 5,
+        id: "5",
         title: "Develop Transaction History API",
         dueDate: new Date("2026-04-03T09:00:00Z"),
         description: "Create the GET endpoints in Go to fetch paginated transaction records.",
@@ -80,7 +80,7 @@ export const testingTasks = [
         assignedTo: "Ayush R."
     },
     {
-        id: 6,
+        id: "6",
         title: "Optimize Docker Builds",
         dueDate: new Date("2026-04-05T15:00:00Z"),
         description: "Implement multi-stage builds to reduce the image size for the React frontend container.",
@@ -89,7 +89,7 @@ export const testingTasks = [
         assignedTo: "Ayush R."
     },
     {
-        id: 7,
+        id: "7",
         title: "Setup CI/CD Pipeline",
         dueDate: new Date("2026-04-08T11:00:00Z"),
         description: "Configure GitHub Actions for automated testing and linting on pull requests.",
@@ -98,7 +98,7 @@ export const testingTasks = [
         assignedTo: "Meet K."
     },
     {
-        id: 8,
+        id: "8",
         title: "Finalize API Documentation",
         dueDate: new Date("2026-04-12T16:00:00Z"),
         description: "Generate Swagger/OpenAPI documentation for all billing endpoints.",
@@ -107,7 +107,7 @@ export const testingTasks = [
         assignedTo: "Unassigned"
     },
     {
-        id: 9,
+        id: "9",
         title: "Set Up Webhook Notifications",
         dueDate: new Date("2026-04-15T10:00:00Z"),
         description: "Implement event listeners in Go for failed billing transactions and send alerts.",
@@ -116,7 +116,7 @@ export const testingTasks = [
         assignedTo: "Meet K."
     },
     {
-        id: 10,
+        id: "10",
         title: "Post-Launch Performance Review",
         dueDate: new Date("2026-04-25T14:00:00Z"),
         description: "Analyze system performance, check container health, and gather user feedback.",

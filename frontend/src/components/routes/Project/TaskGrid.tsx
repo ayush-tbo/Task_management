@@ -5,7 +5,7 @@ import TaskCard from "./TaskCard";
 function TaskGrid() {
 
     type Task = {
-        id: number;
+        id: string;
         title: string;
         dueDate: Date;
         description: string;
@@ -20,10 +20,10 @@ function TaskGrid() {
     const [completedTasks, setCompleteTasks] = useState<Task[]>([]);
 
     useEffect(() => {
-        // setTodoTasks(testingTasks.filter((t) => t.status === "todo"));
-        // setInProgressTasks(testingTasks.filter((t) => t.status === "inProgress"));
-        // setReviewTasks(testingTasks.filter((t) => t.status === "review"));
-        // setCompleteTasks(testingTasks.filter((t) => t.status === "completed"));
+        setTodoTasks(testingTasks.filter((t) => t.status === "todo"));
+        setInProgressTasks(testingTasks.filter((t) => t.status === "inProgress"));
+        setReviewTasks(testingTasks.filter((t) => t.status === "review"));
+        setCompleteTasks(testingTasks.filter((t) => t.status === "completed"));
     }, []);
 
     return (
