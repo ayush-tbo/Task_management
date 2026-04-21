@@ -89,6 +89,20 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// add creator as owner member
+	owner := &model.ProjectMember{
+		UserID:    user.ID,
+		Name:      user.Name,
+		Email:     user.Email,
+		AvatarURL: user.AvatarURL,
+		Role:      model.RoleOwner,
+		JoinedAt:  time.Now(),
+	}
+	err = h.projectService.AddMember(r.Context(), project.ID, owner)
+	if err != nil {
+		h.logger.Error("add owner member", "error", err)
+	}
+
 	go func() {
 		entry := &model.ActivityEntry{
 			ID:        primitive.NewObjectID().Hex(),
