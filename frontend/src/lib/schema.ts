@@ -6,11 +6,11 @@ export const projectNameSchema = z.object({
 
 export const taskSchema = z.object({
     title: z.string().trim().min(1, "Title is required"),
-    dueDate: z.date({required_error: "Due Date is required"}),
+    due_date: z.date({required_error: "Due Date is required"}),
     description: z.string().optional(),
-    priority: z.string().trim().min(1, "Priority Number is required"),
-    status: z.enum(["todo", "inProgress", "review", "completed"]),
-    assignedTo: z.string().optional(),
+    priority: z.enum(["p1", "p2", "p3", "p4"]),
+    status: z.enum(["todo", "in_progress", "staging_review", "done"]),
+    assignee_id: z.string().optional(),
 });
 
 export const registerSchema = z.object({

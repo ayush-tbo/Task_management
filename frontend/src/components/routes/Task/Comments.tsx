@@ -3,7 +3,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod/src/zod.js";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { commentSchema } from "@/lib/schema";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";

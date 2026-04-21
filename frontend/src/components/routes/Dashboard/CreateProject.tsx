@@ -9,9 +9,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { projectNameSchema } from "@/lib/schema";
 import axios from "axios";
 
-function CreateProject({open, setOpen}: any) {
+function CreateProject({open, setOpen, onCreated}: any) {
 
-    const { register, handleSubmit, formState:{errors} } = useForm({
+    const { register, handleSubmit, formState:{errors}, reset } = useForm({
         resolver:zodResolver(projectNameSchema),
         defaultValues:{
             name: "",
@@ -20,12 +20,14 @@ function CreateProject({open, setOpen}: any) {
 
     const onSubmit = async (data: any) => {
         try{
-            console.log("Form data:", data); // data => {name:'Project_name'}
-            const res = await axios.post("http://localhost:8080/dash/new", data);
+            console.log("Form data:", data);
+            const res = await axios.post("http://localhost:8080/api/projects", data);
+            reset();
             setOpen(false);
+            onCreated?.();
         }
         catch(err){
-            console.error("Failed to edit account name:", err);
+            console.error("Failed to create project:", err);
         }
     };
 

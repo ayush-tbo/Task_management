@@ -8,7 +8,7 @@ import Footer from "../Header/Footer";
 import { useNavigate } from "react-router-dom";
 import { registerSchema } from "@/lib/schema";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod/src/zod.js";
+import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 
