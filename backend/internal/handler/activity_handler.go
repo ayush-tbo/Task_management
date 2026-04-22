@@ -24,13 +24,14 @@ func NewActivityHandler(activityService *service.ActivityService, logger *slog.L
 func (h *ActivityHandler) GetProjectActivity(w http.ResponseWriter, r *http.Request) {
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Error("readIDParam", "error", err)
+		h.logger.Error("invalid project id param", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
+		return
 	}
 
 	activities, err := h.activityService.FindByProject(r.Context(), projectID)
 	if err != nil {
-		h.logger.Error("findByProject", "error", err)
+		h.logger.Error("get project activity failed", "error", err, "project_id", projectID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve activities")
 		return
 	}
@@ -45,14 +46,14 @@ func (h *ActivityHandler) GetProjectActivity(w http.ResponseWriter, r *http.Requ
 func (h *ActivityHandler) GetTaskActivity(w http.ResponseWriter, r *http.Request) {
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Error("readIDParam", "error", err)
+		h.logger.Error("invalid task id param", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	activities, err := h.activityService.FindByTask(r.Context(), taskID)
 	if err != nil {
-		h.logger.Error("findByTask", "error", err)
+		h.logger.Error("get task activity failed", "error", err, "task_id", taskID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve activities")
 		return
 	}

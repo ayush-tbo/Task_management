@@ -78,11 +78,12 @@ func (h *LabelHandler) CreateLabel(w http.ResponseWriter, r *http.Request) {
 
 	err = h.labelService.Create(r.Context(), label)
 	if err != nil {
-		h.logger.Error("create label", "error", err)
+		h.logger.Error("create label failed", "error", err, "project_id", projectID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not create label")
 		return
 	}
 
+	h.logger.Info("label created", "label_id", label.ID, "name", label.Name, "project_id", projectID, "user_id", user.ID, "user_name", user.Name)
 	middleware.WriteJSON(w, http.StatusCreated, map[string]any{"label": label})
 }
 
@@ -128,11 +129,12 @@ func (h *LabelHandler) UpdateLabel(w http.ResponseWriter, r *http.Request) {
 
 	err = h.labelService.Update(r.Context(), label)
 	if err != nil {
-		h.logger.Error("update label", "error", err)
+		h.logger.Error("update label failed", "error", err, "label_id", labelID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update label")
 		return
 	}
 
+	h.logger.Info("label updated", "label_id", labelID, "user_id", user.ID, "user_name", user.Name)
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"label": label})
 }
 
@@ -163,10 +165,11 @@ func (h *LabelHandler) DeleteLabel(w http.ResponseWriter, r *http.Request) {
 
 	err = h.labelService.Delete(r.Context(), labelID)
 	if err != nil {
-		h.logger.Error("delete label", "error", err)
+		h.logger.Error("delete label failed", "error", err, "label_id", labelID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete label")
 		return
 	}
 
+	h.logger.Info("label deleted", "label_id", labelID, "user_id", user.ID, "user_name", user.Name)
 	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
 }

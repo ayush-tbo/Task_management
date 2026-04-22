@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/floqast/task-management/backend/internal/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -24,12 +25,14 @@ type ProjectRepository interface {
 type MongoProjectRepository struct {
 	collection *mongo.Collection
 	members    *mongo.Collection
+	logger     *slog.Logger
 }
 
-func NewMongoProjectRepository(db *mongo.Client) *MongoProjectRepository {
+func NewMongoProjectRepository(db *mongo.Client, logger *slog.Logger) *MongoProjectRepository {
 	return &MongoProjectRepository{
 		collection: db.Database("NoSQL").Collection("projects"),
 		members:    db.Database("NoSQL").Collection("project_members"),
+		logger:     logger,
 	}
 }
 
@@ -40,6 +43,7 @@ func (m *MongoProjectRepository) FindByID(ctx context.Context, id string) (*mode
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil // project not found
 		}
+		m.logger.Error("repo: find project by id", "error", err, "project_id", id)
 		return nil, err
 	}
 	return &project, nil
@@ -47,6 +51,9 @@ func (m *MongoProjectRepository) FindByID(ctx context.Context, id string) (*mode
 
 func (m *MongoProjectRepository) Create(ctx context.Context, project *model.Project) error {
 	_, err := m.collection.InsertOne(ctx, project)
+	if err != nil {
+		m.logger.Error("repo: create project", "error", err, "project_id", project.ID)
+	}
 	return err
 }
 
@@ -61,11 +68,17 @@ func (m *MongoProjectRepository) Update(ctx context.Context, project *model.Proj
 		},
 	}
 	_, err := m.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		m.logger.Error("repo: update project", "error", err, "project_id", project.ID)
+	}
 	return err
 }
 
 func (m *MongoProjectRepository) Delete(ctx context.Context, id string) error {
 	_, err := m.collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		m.logger.Error("repo: delete project", "error", err, "project_id", id)
+	}
 	return err
 }
 
@@ -136,10 +149,16 @@ func (m *MongoProjectRepository) AddMember(ctx context.Context, projectID string
 		"role":       member.Role,
 		"joined_at":  member.JoinedAt,
 	})
+	if err != nil {
+		m.logger.Error("repo: add project member", "error", err, "project_id", projectID, "user_id", member.UserID)
+	}
 	return err
 }
 
 func (m *MongoProjectRepository) RemoveMember(ctx context.Context, projectID, userID string) error {
 	_, err := m.members.DeleteOne(ctx, bson.M{"project_id": projectID, "user_id": userID})
+	if err != nil {
+		m.logger.Error("repo: remove project member", "error", err, "project_id", projectID, "user_id", userID)
+	}
 	return err
 }

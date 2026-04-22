@@ -30,7 +30,7 @@ func (h *NotificationHandler) ListNotifications(w http.ResponseWriter, r *http.R
 
 	notifications, err := h.service.FindByUser(r.Context(), user.ID)
 	if err != nil {
-		h.logger.Error("findByUser", "error", err)
+		h.logger.Error("list notifications failed", "error", err, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "Unable to fetch notifications from server")
 		return
 	}
@@ -48,7 +48,7 @@ func (h *NotificationHandler) MarkNotificationRead(w http.ResponseWriter, r *htt
 
 	err = h.service.MarkRead(r.Context(), notificationID)
 	if err != nil {
-		h.logger.Error("markRead", "error", err)
+		h.logger.Error("mark notification read failed", "error", err, "notification_id", notificationID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "server not able to perform operation")
 		return
 	}
@@ -65,7 +65,7 @@ func (h *NotificationHandler) MarkAllNotificationsRead(w http.ResponseWriter, r 
 
 	err := h.service.MarkAllRead(r.Context(), user.ID)
 	if err != nil {
-		h.logger.Error("markAllRead", "error", err)
+		h.logger.Error("mark all notifications read failed", "error", err, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "server not able to perform operation")
 		return
 	}

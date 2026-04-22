@@ -84,10 +84,12 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 	err = h.commentService.Create(r.Context(), comment)
 	if err != nil {
-		h.logger.Error("create", "error", err)
+		h.logger.Error("create comment failed", "error", err, "task_id", taskID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
+
+	h.logger.Info("comment created", "comment_id", comment.ID, "task_id", taskID, "user_id", user.ID, "user_name", user.Name)
 
 	activity := &model.ActivityEntry{
 		ID:        primitive.NewObjectID().Hex(),
@@ -160,10 +162,12 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 
 	err = h.commentService.Update(r.Context(), existingComment)
 	if err != nil {
-		h.logger.Error("update", "error", err)
+		h.logger.Error("update comment failed", "error", err, "comment_id", commentID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
+
+	h.logger.Info("comment updated", "comment_id", commentID, "user_id", user.ID, "user_name", user.Name)
 
 	activity := &model.ActivityEntry{
 		ID:        primitive.NewObjectID().Hex(),
@@ -224,9 +228,11 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 
 	err = h.commentService.Delete(r.Context(), commentID)
 	if err != nil {
-		h.logger.Error("delete", "error", err)
+		h.logger.Error("delete comment failed", "error", err, "comment_id", commentID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "delete failed")
 	}
+
+	h.logger.Info("comment deleted", "comment_id", commentID, "user_id", user.ID, "user_name", user.Name)
 
 	activity := &model.ActivityEntry{
 		ID:        primitive.NewObjectID().Hex(),

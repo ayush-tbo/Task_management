@@ -45,7 +45,7 @@ func (h *TaskHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 
 	tasks, total, err := h.taskService.FindByProject(r.Context(), projectID, filters, page, pageSize)
 	if err != nil {
-		h.logger.Error("list tasks", "error", err)
+		h.logger.Error("list tasks failed", "error", err, "project_id", projectID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve tasks")
 		return
 	}
@@ -126,10 +126,12 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Create(r.Context(), task)
 	if err != nil {
-		h.logger.Error("create task", "error", err)
+		h.logger.Error("create task failed", "error", err, "project_id", projectID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not create task")
 		return
 	}
+
+	h.logger.Info("task created", "task_id", task.ID, "title", task.Title, "project_id", projectID, "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
 		entry := &model.ActivityEntry{
@@ -143,7 +145,7 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 			CreatedAt: time.Now(),
 		}
 		if err := h.activityService.Create(context.Background(), entry); err != nil {
-			h.logger.Error("activity log", "error", err)
+			h.logger.Error("activity log failed", "error", err, "task_id", task.ID)
 		}
 	}()
 
@@ -233,10 +235,12 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Update(r.Context(), task)
 	if err != nil {
-		h.logger.Error("update task", "error", err)
+		h.logger.Error("update task failed", "error", err, "task_id", taskID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update task")
 		return
 	}
+
+	h.logger.Info("task updated", "task_id", taskID, "title", task.Title, "project_id", task.ProjectID, "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
 		entry := &model.ActivityEntry{
@@ -250,7 +254,7 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 			CreatedAt: time.Now(),
 		}
 		if err := h.activityService.Create(context.Background(), entry); err != nil {
-			h.logger.Error("activity log", "error", err)
+			h.logger.Error("activity log failed", "error", err, "task_id", task.ID)
 		}
 	}()
 
@@ -284,17 +288,19 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Delete(r.Context(), taskID)
 	if err != nil {
-		h.logger.Error("delete task", "error", err)
+		h.logger.Error("delete task failed", "error", err, "task_id", taskID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete task")
 		return
 	}
 
 	err = h.commentService.DeleteAll(r.Context(), taskID)
 	if err != nil {
-		h.logger.Error("delete all comment", "error", err)
+		h.logger.Error("delete task comments failed", "error", err, "task_id", taskID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete all comments of task")
 		return
 	}
+
+	h.logger.Info("task deleted", "task_id", taskID, "title", task.Title, "project_id", task.ProjectID, "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
 		entry := &model.ActivityEntry{
@@ -308,7 +314,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 			CreatedAt: time.Now(),
 		}
 		if err := h.activityService.Create(context.Background(), entry); err != nil {
-			h.logger.Error("activity log", "error", err)
+			h.logger.Error("activity log failed", "error", err, "task_id", taskID)
 		}
 	}()
 
@@ -357,10 +363,12 @@ func (h *TaskHandler) AssignTask(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Update(r.Context(), task)
 	if err != nil {
-		h.logger.Error("assign task", "error", err)
+		h.logger.Error("assign task failed", "error", err, "task_id", taskID, "assignee_id", req.AssigneeID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not assign task")
 		return
 	}
+
+	h.logger.Info("task assigned", "task_id", taskID, "assignee_id", req.AssigneeID, "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
 		entry := &model.ActivityEntry{
@@ -419,10 +427,12 @@ func (h *TaskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 
 	err = h.taskService.Update(r.Context(), task)
 	if err != nil {
-		h.logger.Error("update task status", "error", err)
+		h.logger.Error("update task status failed", "error", err, "task_id", taskID, "new_status", req.Status, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update task status")
 		return
 	}
+
+	h.logger.Info("task status changed", "task_id", taskID, "new_status", string(req.Status), "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
 		entry := &model.ActivityEntry{

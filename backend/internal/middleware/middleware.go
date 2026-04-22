@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/floqast/task-management/backend/internal/model"
 	"github.com/floqast/task-management/backend/internal/service"
@@ -85,4 +87,55 @@ func (um *UserMiddleware) RequireUser(next http.HandlerFunc) http.HandlerFunc {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// responseWriter wraps http.ResponseWriter to capture the status code.
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+// RequestLogger logs every incoming request with method, path, user, status, and duration.
+func RequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+
+			wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+			next.ServeHTTP(wrapped, r)
+
+			duration := time.Since(start)
+
+			// try to get user from context (set by Authenticate middleware)
+			userID := "anonymous"
+			userName := "anonymous"
+			if user, ok := r.Context().Value(UserContextKey).(*model.User); ok && user != nil && user != model.AnonymousUser {
+				userID = user.ID
+				userName = user.Name
+			}
+
+			attrs := []any{
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", wrapped.statusCode,
+				"duration_ms", duration.Milliseconds(),
+				"user_id", userID,
+				"user_name", userName,
+				"remote_addr", r.RemoteAddr,
+			}
+
+			if wrapped.statusCode >= 500 {
+				logger.Error("request completed", attrs...)
+			} else if wrapped.statusCode >= 400 {
+				logger.Warn("request completed", attrs...)
+			} else {
+				logger.Info("request completed", attrs...)
+			}
+		})
+	}
 }

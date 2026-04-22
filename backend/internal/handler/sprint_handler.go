@@ -95,11 +95,12 @@ func (h *SprintHandler) CreateSprint(w http.ResponseWriter, r *http.Request) {
 
 	err = h.sprintService.Create(r.Context(), sprint)
 	if err != nil {
-		h.logger.Error("create sprint", "error", err)
+		h.logger.Error("create sprint failed", "error", err, "project_id", projectID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not create sprint")
 		return
 	}
 
+	h.logger.Info("sprint created", "sprint_id", sprint.ID, "name", sprint.Name, "project_id", projectID, "user_id", user.ID, "user_name", user.Name)
 	middleware.WriteJSON(w, http.StatusCreated, map[string]any{"sprint": sprint})
 }
 
@@ -177,11 +178,12 @@ func (h *SprintHandler) UpdateSprint(w http.ResponseWriter, r *http.Request) {
 
 	err = h.sprintService.Update(r.Context(), sprint)
 	if err != nil {
-		h.logger.Error("update sprint", "error", err)
+		h.logger.Error("update sprint failed", "error", err, "sprint_id", sprintID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update sprint")
 		return
 	}
 
+	h.logger.Info("sprint updated", "sprint_id", sprintID, "user_id", user.ID, "user_name", user.Name)
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"sprint": sprint})
 }
 
@@ -212,11 +214,12 @@ func (h *SprintHandler) DeleteSprint(w http.ResponseWriter, r *http.Request) {
 
 	err = h.sprintService.Delete(r.Context(), sprintID)
 	if err != nil {
-		h.logger.Error("delete sprint", "error", err)
+		h.logger.Error("delete sprint failed", "error", err, "sprint_id", sprintID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete sprint")
 		return
 	}
 
+	h.logger.Info("sprint deleted", "sprint_id", sprintID, "user_id", user.ID, "user_name", user.Name)
 	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
 }
 
