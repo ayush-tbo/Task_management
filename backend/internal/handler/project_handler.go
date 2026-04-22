@@ -38,7 +38,7 @@ func (h *ProjectHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
 	page, pageSize := middleware.GetPaginationParams(r)
 	projects, total, err := h.projectService.FindByUser(r.Context(), user.ID, page, pageSize)
 	if err != nil {
-		h.logger.Error("List Projects", "error", err)
+		h.logger.Error("list projects failed", "error", err, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve projects")
 		return
 	}
@@ -64,7 +64,7 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateProjectRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Error("decode create project request", "error", err)
+		h.logger.Error("decode create project request", "error", err, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -84,7 +84,7 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.projectService.Create(r.Context(), project)
 	if err != nil {
-		h.logger.Error("create project", "error", err)
+		h.logger.Error("create project failed", "error", err, "user_id", user.ID, "project_name", req.Name)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not create project")
 		return
 	}
@@ -100,8 +100,10 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.projectService.AddMember(r.Context(), project.ID, owner)
 	if err != nil {
-		h.logger.Error("add owner member", "error", err)
+		h.logger.Error("add owner member failed", "error", err, "user_id", user.ID, "project_id", project.ID)
 	}
+
+	h.logger.Info("project created", "project_id", project.ID, "project_name", project.Name, "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
 		entry := &model.ActivityEntry{
@@ -114,7 +116,7 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 			CreatedAt: time.Now(),
 		}
 		if err := h.activityService.Create(context.Background(), entry); err != nil {
-			h.logger.Error("activity log", "error", err)
+			h.logger.Error("activity log failed", "error", err, "project_id", project.ID)
 		}
 	}()
 
@@ -198,11 +200,12 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 
 	err = h.projectService.Update(r.Context(), project)
 	if err != nil {
-		h.logger.Error("update project", "error", err)
+		h.logger.Error("update project failed", "error", err, "project_id", projectID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update project")
 		return
 	}
 
+	h.logger.Info("project updated", "project_id", projectID, "user_id", user.ID, "user_name", user.Name)
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"project": project})
 }
 
@@ -238,11 +241,12 @@ func (h *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 
 	err = h.projectService.Delete(r.Context(), projectID)
 	if err != nil {
-		h.logger.Error("delete project", "error", err)
+		h.logger.Error("delete project failed", "error", err, "project_id", projectID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete project")
 		return
 	}
 
+	h.logger.Info("project deleted", "project_id", projectID, "user_id", user.ID, "user_name", user.Name)
 	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
 }
 

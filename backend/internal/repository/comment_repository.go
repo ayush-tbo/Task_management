@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/floqast/task-management/backend/internal/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -22,11 +23,13 @@ type CommentRepository interface {
 
 type MongoCommentRepository struct {
 	collection *mongo.Collection
+	logger     *slog.Logger
 }
 
-func NewMongoCommentRepository(db *mongo.Client) *MongoCommentRepository {
+func NewMongoCommentRepository(db *mongo.Client, logger *slog.Logger) *MongoCommentRepository {
 	return &MongoCommentRepository{
 		collection: db.Database("NoSQL").Collection("comments"),
+		logger:     logger,
 	}
 }
 
@@ -47,12 +50,14 @@ func (m *MongoCommentRepository) FindByTask(ctx context.Context, taskID string) 
 
 	cursor, err := m.collection.Aggregate(ctx, pipeline)
 	if err != nil {
+		m.logger.Error("repo: find comments by task aggregate", "error", err, "task_id", taskID)
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
 	err = cursor.All(ctx, &comments)
 	if err != nil {
+		m.logger.Error("repo: find comments by task decode", "error", err, "task_id", taskID)
 		return nil, err
 	}
 
@@ -71,6 +76,7 @@ func (m *MongoCommentRepository) FindByID(ctx context.Context, id string) (*mode
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil // Comment Not Found
 		}
+		m.logger.Error("repo: find comment by id", "error", err, "comment_id", id)
 		return nil, err
 	}
 	return &comment, nil
@@ -78,6 +84,9 @@ func (m *MongoCommentRepository) FindByID(ctx context.Context, id string) (*mode
 
 func (m *MongoCommentRepository) Create(ctx context.Context, comment *model.Comment) error {
 	_, err := m.collection.InsertOne(ctx, comment)
+	if err != nil {
+		m.logger.Error("repo: create comment", "error", err, "comment_id", comment.ID, "task_id", comment.TaskID)
+	}
 	return err
 }
 
@@ -92,15 +101,24 @@ func (m *MongoCommentRepository) Update(ctx context.Context, comment *model.Comm
 	}
 
 	_, err := m.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		m.logger.Error("repo: update comment", "error", err, "comment_id", comment.ID)
+	}
 	return err
 }
 
 func (m *MongoCommentRepository) Delete(ctx context.Context, id string) error {
 	_, err := m.collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		m.logger.Error("repo: delete comment", "error", err, "comment_id", id)
+	}
 	return err
 }
 
 func (m *MongoCommentRepository) DeleteAll(ctx context.Context, taskID string) error {
 	_, err := m.collection.DeleteMany(ctx, bson.M{"task_id": taskID})
+	if err != nil {
+		m.logger.Error("repo: delete all comments", "error", err, "task_id", taskID)
+	}
 	return err
 }

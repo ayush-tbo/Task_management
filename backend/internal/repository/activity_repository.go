@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/floqast/task-management/backend/internal/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -18,11 +19,13 @@ type ActivityRepository interface {
 
 type MongoActivityRepository struct {
 	collection *mongo.Collection
+	logger     *slog.Logger
 }
 
-func NewMongoActivityRepository(db *mongo.Client) *MongoActivityRepository {
+func NewMongoActivityRepository(db *mongo.Client, logger *slog.Logger) *MongoActivityRepository {
 	return &MongoActivityRepository{
 		collection: db.Database("NoSQL").Collection("activity"),
+		logger:     logger,
 	}
 }
 
@@ -43,12 +46,14 @@ func (m *MongoActivityRepository) FindByProject(ctx context.Context, projectID s
 
 	cursor, err := m.collection.Aggregate(ctx, pipeline)
 	if err != nil {
+		m.logger.Error("repo: find activity by project aggregate", "error", err, "project_id", projectID)
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
 	err = cursor.All(ctx, &activities)
 	if err != nil {
+		m.logger.Error("repo: find activity by project decode", "error", err, "project_id", projectID)
 		return nil, err
 	}
 
@@ -76,12 +81,14 @@ func (m *MongoActivityRepository) FindByTask(ctx context.Context, taskID string)
 
 	cursor, err := m.collection.Aggregate(ctx, pipeline)
 	if err != nil {
+		m.logger.Error("repo: find activity by task aggregate", "error", err, "task_id", taskID)
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
 	err = cursor.All(ctx, &activities)
 	if err != nil {
+		m.logger.Error("repo: find activity by task decode", "error", err, "task_id", taskID)
 		return nil, err
 	}
 
@@ -94,5 +101,8 @@ func (m *MongoActivityRepository) FindByTask(ctx context.Context, taskID string)
 
 func (m *MongoActivityRepository) Create(ctx context.Context, activity *model.ActivityEntry) error {
 	_, err := m.collection.InsertOne(ctx, activity)
+	if err != nil {
+		m.logger.Error("repo: create activity", "error", err, "project_id", activity.ProjectID, "action", activity.Action)
+	}
 	return err
 }

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/floqast/task-management/backend/internal/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -21,11 +22,13 @@ type SprintRepository interface {
 
 type MongoSprintRepository struct {
 	collection *mongo.Collection
+	logger     *slog.Logger
 }
 
-func NewMongoSprintRepository(db *mongo.Client) *MongoSprintRepository {
+func NewMongoSprintRepository(db *mongo.Client, logger *slog.Logger) *MongoSprintRepository {
 	return &MongoSprintRepository{
 		collection: db.Database("NoSQL").Collection("sprints"),
+		logger:     logger,
 	}
 }
 
@@ -37,6 +40,7 @@ func (m *MongoSprintRepository) FindByProject(ctx context.Context, projectID str
 
 	cursor, err := m.collection.Find(ctx, filter)
 	if err != nil {
+		m.logger.Error("repo: find sprints by project", "error", err, "project_id", projectID)
 		return nil, err
 	}
 	defer cursor.Close(ctx)
@@ -59,6 +63,7 @@ func (m *MongoSprintRepository) FindByID(ctx context.Context, id string) (*model
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
 		}
+		m.logger.Error("repo: find sprint by id", "error", err, "sprint_id", id)
 		return nil, err
 	}
 	return &sprint, nil
@@ -66,6 +71,9 @@ func (m *MongoSprintRepository) FindByID(ctx context.Context, id string) (*model
 
 func (m *MongoSprintRepository) Create(ctx context.Context, sprint *model.Sprint) error {
 	_, err := m.collection.InsertOne(ctx, sprint)
+	if err != nil {
+		m.logger.Error("repo: create sprint", "error", err, "sprint_id", sprint.ID)
+	}
 	return err
 }
 
@@ -83,11 +91,17 @@ func (m *MongoSprintRepository) Update(ctx context.Context, sprint *model.Sprint
 		},
 	}
 	_, err := m.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		m.logger.Error("repo: update sprint", "error", err, "sprint_id", sprint.ID)
+	}
 	return err
 }
 
 func (m *MongoSprintRepository) Delete(ctx context.Context, id string) error {
 	_, err := m.collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		m.logger.Error("repo: delete sprint", "error", err, "sprint_id", id)
+	}
 	return err
 }
 
@@ -95,6 +109,9 @@ func (m *MongoSprintRepository) AddTask(ctx context.Context, sprintID, taskID st
 	filter := bson.M{"_id": sprintID}
 	update := bson.M{"$inc": bson.M{"task_count": 1}}
 	_, err := m.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		m.logger.Error("repo: add task to sprint", "error", err, "sprint_id", sprintID, "task_id", taskID)
+	}
 	return err
 }
 
@@ -102,5 +119,8 @@ func (m *MongoSprintRepository) RemoveTask(ctx context.Context, sprintID, taskID
 	filter := bson.M{"_id": sprintID}
 	update := bson.M{"$inc": bson.M{"task_count": -1}}
 	_, err := m.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		m.logger.Error("repo: remove task from sprint", "error", err, "sprint_id", sprintID, "task_id", taskID)
+	}
 	return err
 }

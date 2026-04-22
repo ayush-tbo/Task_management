@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/floqast/task-management/backend/internal/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -19,17 +20,20 @@ type LabelRepository interface {
 
 type MongoLabelRepository struct {
 	collection *mongo.Collection
+	logger     *slog.Logger
 }
 
-func NewMongoLabelRepository(db *mongo.Client) *MongoLabelRepository {
+func NewMongoLabelRepository(db *mongo.Client, logger *slog.Logger) *MongoLabelRepository {
 	return &MongoLabelRepository{
 		collection: db.Database("NoSQL").Collection("labels"),
+		logger:     logger,
 	}
 }
 
 func (m *MongoLabelRepository) FindByProject(ctx context.Context, projectID string) ([]model.Label, error) {
 	cursor, err := m.collection.Find(ctx, bson.M{"project_id": projectID})
 	if err != nil {
+		m.logger.Error("repo: find labels by project", "error", err, "project_id", projectID)
 		return nil, err
 	}
 	defer cursor.Close(ctx)
@@ -52,6 +56,7 @@ func (m *MongoLabelRepository) FindByID(ctx context.Context, id string) (*model.
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
 		}
+		m.logger.Error("repo: find label by id", "error", err, "label_id", id)
 		return nil, err
 	}
 	return &label, nil
@@ -59,6 +64,9 @@ func (m *MongoLabelRepository) FindByID(ctx context.Context, id string) (*model.
 
 func (m *MongoLabelRepository) Create(ctx context.Context, label *model.Label) error {
 	_, err := m.collection.InsertOne(ctx, label)
+	if err != nil {
+		m.logger.Error("repo: create label", "error", err, "label_id", label.ID)
+	}
 	return err
 }
 
@@ -71,10 +79,16 @@ func (m *MongoLabelRepository) Update(ctx context.Context, label *model.Label) e
 		},
 	}
 	_, err := m.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		m.logger.Error("repo: update label", "error", err, "label_id", label.ID)
+	}
 	return err
 }
 
 func (m *MongoLabelRepository) Delete(ctx context.Context, id string) error {
 	_, err := m.collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		m.logger.Error("repo: delete label", "error", err, "label_id", id)
+	}
 	return err
 }

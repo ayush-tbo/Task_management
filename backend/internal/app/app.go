@@ -38,24 +38,24 @@ func NewApplication() (*Application, error) {
 	}))
 
 	// our repositories will go here
-	userRepository := repository.NewMongoUserRepository(mongoDB)
-	commentRepository := repository.NewMongoCommentRepository(mongoDB)
-	projectRepository := repository.NewMongoProjectRepository(mongoDB)
-	taskRepository := repository.NewMongoTaskRepository(mongoDB)
-	activityRepository := repository.NewMongoActivityRepository(mongoDB)
-	notificationRepository := repository.NewMongoNotificationRepository(mongoDB)
-	sprintRepository := repository.NewMongoSprintRepository(mongoDB)
-	labelRepository := repository.NewMongoLabelRepository(mongoDB)
+	userRepository := repository.NewMongoUserRepository(mongoDB, logger)
+	commentRepository := repository.NewMongoCommentRepository(mongoDB, logger)
+	projectRepository := repository.NewMongoProjectRepository(mongoDB, logger)
+	taskRepository := repository.NewMongoTaskRepository(mongoDB, logger)
+	activityRepository := repository.NewMongoActivityRepository(mongoDB, logger)
+	notificationRepository := repository.NewMongoNotificationRepository(mongoDB, logger)
+	sprintRepository := repository.NewMongoSprintRepository(mongoDB, logger)
+	labelRepository := repository.NewMongoLabelRepository(mongoDB, logger)
 
 	// our services will go here
-	userService := service.NewUserService(userRepository)
-	commentService := service.NewCommentService(commentRepository, activityRepository)
-	projectService := service.NewProjectService(projectRepository, activityRepository)
-	taskService := service.NewTaskService(taskRepository)
-	activityService := service.NewActivityService(activityRepository)
-	notificationService := service.NewNotificationService(notificationRepository)
-	sprintService := service.NewSprintService(sprintRepository, activityRepository)
-	labelService := service.NewLabelService(labelRepository, activityRepository)
+	userService := service.NewUserService(userRepository, logger)
+	commentService := service.NewCommentService(commentRepository, activityRepository, logger)
+	projectService := service.NewProjectService(projectRepository, activityRepository, logger)
+	taskService := service.NewTaskService(taskRepository, logger)
+	activityService := service.NewActivityService(activityRepository, logger)
+	notificationService := service.NewNotificationService(notificationRepository, logger)
+	sprintService := service.NewSprintService(sprintRepository, activityRepository, logger)
+	labelService := service.NewLabelService(labelRepository, activityRepository, logger)
 
 	//handlers will go here
 	middlewareHandler := middleware.UserMiddleware{UserService: *userService}

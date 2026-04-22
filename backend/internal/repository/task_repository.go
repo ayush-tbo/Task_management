@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/floqast/task-management/backend/internal/model"
@@ -38,11 +39,13 @@ type TaskFilters struct {
 
 type MongoTaskRepository struct {
 	collection *mongo.Collection
+	logger     *slog.Logger
 }
 
-func NewMongoTaskRepository(db *mongo.Client) *MongoTaskRepository {
+func NewMongoTaskRepository(db *mongo.Client, logger *slog.Logger) *MongoTaskRepository {
 	return &MongoTaskRepository{
 		collection: db.Database("NoSQL").Collection("tasks"),
+		logger:     logger,
 	}
 }
 
@@ -53,6 +56,7 @@ func (m *MongoTaskRepository) FindByID(ctx context.Context, id string) (*model.T
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
 		}
+		m.logger.Error("repo: find task by id", "error", err, "task_id", id)
 		return nil, err
 	}
 	if task.DueDate != nil && task.DueDate.Before(time.Now()) && task.Status != model.StatusDone {
@@ -63,6 +67,9 @@ func (m *MongoTaskRepository) FindByID(ctx context.Context, id string) (*model.T
 
 func (m *MongoTaskRepository) Create(ctx context.Context, task *model.Task) error {
 	_, err := m.collection.InsertOne(ctx, task)
+	if err != nil {
+		m.logger.Error("repo: create task", "error", err, "task_id", task.ID, "project_id", task.ProjectID)
+	}
 	return err
 }
 
@@ -84,11 +91,17 @@ func (m *MongoTaskRepository) Update(ctx context.Context, task *model.Task) erro
 		},
 	}
 	_, err := m.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		m.logger.Error("repo: update task", "error", err, "task_id", task.ID)
+	}
 	return err
 }
 
 func (m *MongoTaskRepository) Delete(ctx context.Context, id string) error {
 	_, err := m.collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		m.logger.Error("repo: delete task", "error", err, "task_id", id)
+	}
 	return err
 }
 

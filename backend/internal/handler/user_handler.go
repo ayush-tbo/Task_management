@@ -134,10 +134,12 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	err = h.userService.CreateToken(r.Context(), token)
 	if err != nil {
-		h.logger.Error("createToken", "error", err)
+		h.logger.Error("createToken failed", "error", err, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
+
+	h.logger.Info("user registered", "user_id", user.ID, "email", user.Email, "name", user.Name)
 
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{
 		"token": token.PlainText,
@@ -184,10 +186,12 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	err = h.userService.CreateToken(r.Context(), token)
 	if err != nil {
-		h.logger.Error("createToken", "error", err)
+		h.logger.Error("createToken failed", "error", err, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "internal server error")
 		return
 	}
+
+	h.logger.Info("user logged in", "user_id", user.ID, "email", user.Email, "name", user.Name)
 
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{
 		"token": token.PlainText,

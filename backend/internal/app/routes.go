@@ -1,12 +1,16 @@
 package app
 
 import (
+	"github.com/floqast/task-management/backend/internal/middleware"
 	"github.com/go-chi/chi/v5"
 )
 
 func SetupRoutes(app *Application) *chi.Mux {
 
 	r := chi.NewRouter()
+
+	// log every request: method, path, user, status, duration
+	r.Use(middleware.RequestLogger(app.Logger))
 
 	// Auth routes
 	r.Post("/api/users/register", app.UserHandler.RegisterUser)

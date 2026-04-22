@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/floqast/task-management/backend/internal/model"
@@ -26,11 +27,13 @@ type UserRepository interface {
 
 type MongoUserRepository struct {
 	collection *mongo.Collection
+	logger     *slog.Logger
 }
 
-func NewMongoUserRepository(db *mongo.Client) *MongoUserRepository {
+func NewMongoUserRepository(db *mongo.Client, logger *slog.Logger) *MongoUserRepository {
 	return &MongoUserRepository{
 		collection: db.Database("NoSQL").Collection("users"),
+		logger:     logger,
 	}
 }
 
@@ -42,6 +45,7 @@ func (m *MongoUserRepository) FindByID(ctx context.Context, id string) (*model.U
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil // User Not Found
 		}
+		m.logger.Error("repo: find user by id", "error", err, "user_id", id)
 		return nil, err
 	}
 	return &user, nil
@@ -55,6 +59,7 @@ func (m *MongoUserRepository) FindByEmail(ctx context.Context, email string) (*m
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil // User Not Found
 		}
+		m.logger.Error("repo: find user by email", "error", err, "email", email)
 		return nil, err
 	}
 	return &user, nil
@@ -67,6 +72,7 @@ func (m *MongoUserRepository) FindByName(ctx context.Context, name string) (*mod
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil // User Not Found
 		}
+		m.logger.Error("repo: find user by name", "error", err, "name", name)
 		return nil, err
 	}
 	return &user, nil
@@ -77,6 +83,7 @@ func (m *MongoUserRepository) GetAllUsers(ctx context.Context) ([]model.User, er
 
 	cursor, err := m.collection.Find(ctx, bson.M{})
 	if err != nil {
+		m.logger.Error("repo: get all users", "error", err)
 		return nil, err
 	}
 	defer cursor.Close(ctx)
@@ -95,6 +102,9 @@ func (m *MongoUserRepository) GetAllUsers(ctx context.Context) ([]model.User, er
 
 func (m *MongoUserRepository) Create(ctx context.Context, user *model.User) error {
 	_, err := m.collection.InsertOne(ctx, user)
+	if err != nil {
+		m.logger.Error("repo: create user", "error", err, "user_id", user.ID)
+	}
 	return err
 }
 
@@ -112,6 +122,9 @@ func (m *MongoUserRepository) Update(ctx context.Context, user *model.User) erro
 	}
 
 	_, err := m.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		m.logger.Error("repo: update user", "error", err, "user_id", user.ID)
+	}
 	return err
 }
 
@@ -133,6 +146,7 @@ func (m *MongoUserRepository) GetToken(ctx context.Context, scope string, plainT
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil // Token not found or expired
 		}
+		m.logger.Error("repo: get token", "error", err, "scope", scope)
 		return nil, err
 	}
 
@@ -142,5 +156,8 @@ func (m *MongoUserRepository) GetToken(ctx context.Context, scope string, plainT
 func (m *MongoUserRepository) CreateToken(ctx context.Context, token *model.Token) error {
 	tokenCollection := m.collection.Database().Collection("tokens")
 	_, err := tokenCollection.InsertOne(ctx, token)
+	if err != nil {
+		m.logger.Error("repo: create token", "error", err, "user_id", token.UserID)
+	}
 	return err
 }
