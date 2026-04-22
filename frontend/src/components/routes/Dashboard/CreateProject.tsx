@@ -35,7 +35,7 @@ function CreateProject({open, setOpen, onCreated}: any) {
         <div>
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
-                    <Card className="h-51 hover:shadow-md transition-shadow cursor-pointer border-dashed">
+                    <Card className="h-39 hover:shadow-md transition-shadow cursor-pointer border-dashed">
                         <CardContent className="flex flex-col items-center justify-center text-muted-foreground h-full pt-5">
                             <Plus className="h-10 w-10 mb-2"/>
                             <p className="text-sm font-medium">Add New Project</p>

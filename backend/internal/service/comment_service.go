@@ -38,3 +38,7 @@ func (s *CommentService) Update(ctx context.Context, comment *model.Comment) err
 func (s *CommentService) Delete(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
+
+func (s *CommentService) DeleteAll(ctx context.Context, taskID string) error {
+	return s.repo.DeleteAll(ctx, taskID)
+}

@@ -61,7 +61,7 @@ func NewApplication() (*Application, error) {
 	middlewareHandler := middleware.UserMiddleware{UserService: *userService}
 	commentHandler := handler.NewCommentHandler(commentService, activityService, logger)
 	projectHandler := handler.NewProjectHandler(projectService, taskService, activityService, logger)
-	taskHandler := handler.NewTaskHandler(taskService, projectService, activityService, logger)
+	taskHandler := handler.NewTaskHandler(taskService, projectService, commentService, activityService, logger)
 	userHandler := handler.NewUserHandler(userService, logger)
 	activityHandler := handler.NewActivityHandler(activityService, logger)
 	notificationHandler := handler.NewNotificationHandler(notificationService, logger)

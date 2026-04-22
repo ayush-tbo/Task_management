@@ -17,14 +17,16 @@ import (
 type TaskHandler struct {
 	taskService     *service.TaskService
 	projectService  *service.ProjectService
+	commentService  *service.CommentService
 	activityService *service.ActivityService
 	logger          *slog.Logger
 }
 
-func NewTaskHandler(taskService *service.TaskService, projectService *service.ProjectService, activityService *service.ActivityService, logger *slog.Logger) *TaskHandler {
+func NewTaskHandler(taskService *service.TaskService, projectService *service.ProjectService, commentService *service.CommentService, activityService *service.ActivityService, logger *slog.Logger) *TaskHandler {
 	return &TaskHandler{
 		taskService:     taskService,
 		projectService:  projectService,
+		commentService:  commentService,
 		activityService: activityService,
 		logger:          logger,
 	}
@@ -284,6 +286,13 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.Error("delete task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete task")
+		return
+	}
+
+	err = h.commentService.DeleteAll(r.Context(), taskID)
+	if err != nil {
+		h.logger.Error("delete all comment", "error", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete all comments of task")
 		return
 	}
 

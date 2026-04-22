@@ -15,6 +15,7 @@ type CommentRepository interface {
 	Create(ctx context.Context, comment *model.Comment) error
 	Update(ctx context.Context, comment *model.Comment) error
 	Delete(ctx context.Context, id string) error
+	DeleteAll(ctx context.Context, taskID string) error
 }
 
 // MongoDB Implementations
@@ -96,5 +97,10 @@ func (m *MongoCommentRepository) Update(ctx context.Context, comment *model.Comm
 
 func (m *MongoCommentRepository) Delete(ctx context.Context, id string) error {
 	_, err := m.collection.DeleteOne(ctx, bson.M{"_id": id})
+	return err
+}
+
+func (m *MongoCommentRepository) DeleteAll(ctx context.Context, taskID string) error {
+	_, err := m.collection.DeleteMany(ctx, bson.M{"task_id": taskID})
 	return err
 }

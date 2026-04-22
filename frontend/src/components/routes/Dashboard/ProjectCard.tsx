@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 function ProjectCard({ project }: any) {
 
-    const { id, name, task_count, member_count } = project;
+    const { id, name, member_count } = project;
 
     const navigate = useNavigate();
 
@@ -16,7 +16,6 @@ function ProjectCard({ project }: any) {
                 </CardHeader>
                 <CardContent className="my-0 py-0">
                     <div className="flex flex-col justify-between space-y-1">
-                        <p className="text-sm font-medium">Tasks: {task_count}</p>
                         <p className="text-sm font-medium">Members: {member_count}</p>
                     </div>
                     <p className="text-sm text-muted-foreground mt-3">Click the card to Edit or View the Board in detail</p>

@@ -8,16 +8,19 @@ func SetupRoutes(app *Application) *chi.Mux {
 
 	r := chi.NewRouter()
 
+	// Auth routes
 	r.Post("/api/users/register", app.UserHandler.RegisterUser)
 	r.Post("/api/users/login", app.UserHandler.LoginUser)
 
 	r.Group(func(r chi.Router) {
 		r.Use(app.Middleware.Authenticate)
 
+		// user routes
 		r.Get("/api/users/{id}", app.Middleware.RequireUser(app.UserHandler.GetUserById))
 		r.Patch("/api/users/{id}", app.Middleware.RequireUser(app.UserHandler.UpdateUserById))
 		r.Get("/api/users", app.Middleware.RequireUser(app.UserHandler.AllUsers))
 
+		// comment routes
 		r.Post("/api/tasks/{id}/comments", app.Middleware.RequireUser(app.CommentHandler.CreateComment))
 		r.Get("/api/tasks/{id}/comments", app.Middleware.RequireUser(app.CommentHandler.ListComments))
 		r.Put("/api/comments/{id}", app.Middleware.RequireUser(app.CommentHandler.UpdateComment))
@@ -49,6 +52,7 @@ func SetupRoutes(app *Application) *chi.Mux {
 		r.Get("/api/projects/{id}/activity", app.Middleware.RequireUser(app.ActivityHandler.GetProjectActivity))
 		r.Get("/api/tasks/{id}/activity", app.Middleware.RequireUser(app.ActivityHandler.GetTaskActivity))
 
+		// notification routes
 		r.Get("/api/notifications", app.Middleware.RequireUser(app.NotificationHandler.ListNotifications))
 		r.Put("/api/notifications/{id}/read", app.Middleware.RequireUser(app.NotificationHandler.MarkNotificationRead))
 		r.Put("/api/notifications/read-all", app.Middleware.RequireUser(app.NotificationHandler.MarkAllNotificationsRead))

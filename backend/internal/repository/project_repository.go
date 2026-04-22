@@ -55,6 +55,7 @@ func (m *MongoProjectRepository) Update(ctx context.Context, project *model.Proj
 	update := bson.M{
 		"$set": bson.M{
 			"name":        project.Name,
+			"task_count":  project.TaskCount,
 			"description": project.Description,
 			"updated_at":  project.UpdatedAt,
 		},

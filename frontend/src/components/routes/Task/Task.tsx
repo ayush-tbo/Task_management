@@ -3,7 +3,7 @@ import Header from "../Header/Header";
 import Footer from "../Header/Footer";
 import Comments from "./Comments";
 import { Button } from "@/components/ui/button";
-import { Logs, PenBox } from "lucide-react";
+import { Logs, PenBox, Trash2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 
@@ -36,6 +36,16 @@ function Task() {
         navigate(`/addEdit?id=${id}`);
     };
 
+    const handleDelete = async (taskID: any) => {
+        try{
+            const res = await axios.delete(`http://localhost:8080/api/tasks/${taskID}`);
+            navigate(-1);
+        }
+        catch(err){
+            console.error("Failed to delete task:", err);
+        }
+    }
+
     if (!task) {
         return (
             <div>
@@ -55,15 +65,20 @@ function Task() {
                 <div className="flex flex-row justify-between">
                     <div className="flex flex-row justify-between">
                         <h1 className="text-4xl font-bold gradient-title">{task.title}</h1>
-                        <Button className="mt-1 ml-5" variant={"outline"} onClick={() => handleEdit(task.id)}>
+                        <Button className="mt-1 ml-5" variant="outline" onClick={() => handleEdit(task.id)}>
                             <PenBox size={18} /><span className="hidden md:inline">Edit Task</span>
                         </Button>
                     </div>
-                    <Link to={`/activity?taskId=${taskId}`}>
-                        <Button variant="outline">
-                            <Logs size={18} /><span className="hidden md:inline">Activity Log</span>
+                    <div className="flex gap-2 mt-1">
+                        <Button className="ml-5" variant="outline" onClick={() => handleDelete(task.id)}>
+                            <Trash2 size={18} /><span className="hidden md:inline">Delete Task</span>
                         </Button>
-                    </Link>
+                        <Link to={`/activity?taskId=${taskId}`}>
+                            <Button>
+                                <Logs size={18} /><span className="hidden md:inline">Activity Log</span>
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
                 <p className="text-xl text-gray-600 mb-8 max-w-3xl">{task.description}</p>
                 <div className="flex items-center mb-5">

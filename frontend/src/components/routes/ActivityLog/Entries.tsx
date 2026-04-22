@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import axios from "axios";
-import { MessageSquare, Trash2, Edit, History } from "lucide-react";
+import { MessageSquare, Trash2, Edit, History, UserPlus2, CheckSquare, Pencil } from "lucide-react";
 
 function Entries({ projectId, taskId }: any){
 
@@ -14,6 +14,10 @@ function Entries({ projectId, taskId }: any){
             comment_added: "added a comment",
             comment_changed: "edited a comment",
             comment_deleted: "deleted a comment",
+            member_added: "added a member",
+            task_created: "created a task",
+            task_updated: "updated a task",
+            task_deleted: "deleted a task",
         };
 
         return actions[action] || action.replace("_", " ");
@@ -24,6 +28,10 @@ function Entries({ projectId, taskId }: any){
             case "comment_added": return <MessageSquare className="w-4 h-4 text-blue-500" />;
             case "comment_deleted": return <Trash2 className="w-4 h-4 text-red-500" />;
             case "comment_changed": return <Edit className="w-4 h-4 text-amber-500" />;
+            case "member_added": return <UserPlus2 className="w-4 h-4 text-green-500" />;
+            case "task_created": return <CheckSquare className="w-4 h-4 text-indigo-500" />;
+            case "task_updated": return <Pencil className="w-4 h-4 text-purple-500" />;
+            case "task_deleted": return <Trash2 className="w-4 h-4 text-rose-500" />;
             default: return <History className="w-4 h-4 text-slate-500" />;
         }
     }
@@ -56,15 +64,15 @@ function Entries({ projectId, taskId }: any){
                 <Card key={activity.id}>
                     <CardContent>
                         <div className="mt-2">
-                            {getIcon(activity.action)}
                             <div className="flex flex-col space-y-1">
                                 <div className="flex items-center gap-2">
+                                    {getIcon(activity.action)}
                                     <span className="font-bold text-slate-900">{activity.user?.name}</span>
                                     <span className="text-slate-600">{getActionMessage(activity)}</span>
                                 </div>
                                 {activity.details?.old_content && (
                                     <div className="text-xs italic text-slate-400 bg-slate-50 p-2 rounded border-l-2 border-amber-300">
-                                        Prev: "{activity.details.old_content.substring(0, 60)}..."
+                                        Prev: "{activity.details.old_content}"
                                     </div>
                                 )}
                                 {activity.details?.info && (

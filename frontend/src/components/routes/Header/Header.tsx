@@ -18,13 +18,8 @@ function Header() {
                         </Button>
                     </Link>
                     <Link to="/notifications" className="text-gray-600 hover:text-blue-800 flex items-center gap-2">
-                        <Button variant="outline">
-                            <Bell size={18} /><span className="hidden md:inline">Notifications</span>
-                        </Button>
-                    </Link>
-                    <Link to="/addEdit" className="flex items-center gap-2">
                         <Button>
-                            <PenBox size={18} /><span className="hidden md:inline">Add Task</span>
+                            <Bell size={18} /><span className="hidden md:inline">Notifications</span>
                         </Button>
                     </Link>
                     <Profile />

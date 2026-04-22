@@ -36,7 +36,7 @@ function Project() {
                             </Button>
                         </Link>
                         <Link to={`/activity?projectId=${projectId}`}>
-                            <Button variant="outline">
+                            <Button>
                                 <Logs size={18} /><span className="hidden md:inline">Activity Log</span>
                             </Button>
                         </Link>
