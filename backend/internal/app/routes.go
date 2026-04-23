@@ -58,8 +58,8 @@ func SetupRoutes(app *Application) *chi.Mux {
 
 		// notification routes
 		r.Get("/api/notifications", app.Middleware.RequireUser(app.NotificationHandler.ListNotifications))
-		r.Put("/api/notifications/{id}/read", app.Middleware.RequireUser(app.NotificationHandler.MarkNotificationRead))
 		r.Put("/api/notifications/read-all", app.Middleware.RequireUser(app.NotificationHandler.MarkAllNotificationsRead))
+		r.Put("/api/notifications/{id}/read", app.Middleware.RequireUser(app.NotificationHandler.MarkNotificationRead))
 
 		// label routes
 		r.Get("/api/projects/{id}/labels", app.Middleware.RequireUser(app.LabelHandler.ListLabels))

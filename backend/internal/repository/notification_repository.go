@@ -7,6 +7,7 @@ import (
 	"github.com/floqast/task-management/backend/internal/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type NotificationRepository interface {
@@ -33,7 +34,8 @@ func NewMongoNotificationRepository(db *mongo.Client, logger *slog.Logger) *Mong
 func (m *MongoNotificationRepository) FindByUser(ctx context.Context, userID string) ([]model.Notification, error) {
 	var notifications []model.Notification
 
-	cursor, err := m.collection.Find(ctx, bson.M{"user_id": userID})
+	opts := options.Find().SetSort(bson.D{{Key: "is_read", Value: 1}, {Key: "created_at", Value: -1}})
+	cursor, err := m.collection.Find(ctx, bson.M{"user_id": userID}, opts)
 	if err != nil {
 		m.logger.Error("repo: find notifications by user", "error", err, "user_id", userID)
 		return nil, err

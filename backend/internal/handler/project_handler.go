@@ -14,20 +14,22 @@ import (
 )
 
 type ProjectHandler struct {
-	projectService  *service.ProjectService
-	taskService     *service.TaskService
-	activityService *service.ActivityService
-	userService     *service.UserService
-	logger          *slog.Logger
+	projectService      *service.ProjectService
+	taskService         *service.TaskService
+	activityService     *service.ActivityService
+	userService         *service.UserService
+	notificationService *service.NotificationService
+	logger              *slog.Logger
 }
 
-func NewProjectHandler(projectService *service.ProjectService, taskService *service.TaskService, activityService *service.ActivityService, userService *service.UserService, logger *slog.Logger) *ProjectHandler {
+func NewProjectHandler(projectService *service.ProjectService, taskService *service.TaskService, activityService *service.ActivityService, userService *service.UserService, notificationService *service.NotificationService, logger *slog.Logger) *ProjectHandler {
 	return &ProjectHandler{
-		projectService:  projectService,
-		taskService:     taskService,
-		activityService: activityService,
-		userService:     userService,
-		logger:          logger,
+		projectService:      projectService,
+		taskService:         taskService,
+		activityService:     activityService,
+		userService:         userService,
+		notificationService: notificationService,
+		logger:              logger,
 	}
 }
 
@@ -339,6 +341,24 @@ func (h *ProjectHandler) AddProjectMember(w http.ResponseWriter, r *http.Request
 	_ = h.projectService.IncrementMemberCount(r.Context(), projectID, 1)
 
 	go func() {
+		// Notify the added member
+		if req.UserID != user.ID {
+			refType := "project"
+			n := &model.Notification{
+				ID:            primitive.NewObjectID().Hex(),
+				UserID:        req.UserID,
+				Type:          model.NotifAlert,
+				Title:         "Added to Project",
+				Message:       user.Name + " added you to project \"" + project.Name + "\"",
+				ReferenceType: &refType,
+				ReferenceID:   &projectID,
+				CreatedAt:     time.Now(),
+			}
+			if err := h.notificationService.Create(context.Background(), n); err != nil {
+				h.logger.Error("notification create failed", "error", err)
+			}
+		}
+
 		entry := &model.ActivityEntry{
 			ID:        primitive.NewObjectID().Hex(),
 			ProjectID: projectID,
