@@ -40,7 +40,7 @@ type UpdateTaskRequest struct {
 }
 
 type AssignTaskRequest struct {
-	AssigneeID string `json:"assignee_id" validate:"required"`
+	AssigneeID string `json:"assignee_id"`
 }
 
 type UpdateStatusRequest struct {

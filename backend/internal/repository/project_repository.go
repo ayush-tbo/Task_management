@@ -20,11 +20,14 @@ type ProjectRepository interface {
 	ListMembers(ctx context.Context, projectID string) ([]model.ProjectMember, error)
 	AddMember(ctx context.Context, projectID string, member *model.ProjectMember) error
 	RemoveMember(ctx context.Context, projectID, userID string) error
+	IncrementMemberCount(ctx context.Context, projectID string, delta int) error
+	IncrementTaskCount(ctx context.Context, projectID string, delta int) error
 }
 
 type MongoProjectRepository struct {
 	collection *mongo.Collection
 	members    *mongo.Collection
+	tasks      *mongo.Collection
 	logger     *slog.Logger
 }
 
@@ -32,6 +35,7 @@ func NewMongoProjectRepository(db *mongo.Client, logger *slog.Logger) *MongoProj
 	return &MongoProjectRepository{
 		collection: db.Database("NoSQL").Collection("projects"),
 		members:    db.Database("NoSQL").Collection("project_members"),
+		tasks:      db.Database("NoSQL").Collection("tasks"),
 		logger:     logger,
 	}
 }
@@ -119,6 +123,15 @@ func (m *MongoProjectRepository) FindByUser(ctx context.Context, userID string, 
 	if err != nil {
 		return nil, 0, err
 	}
+
+	// Compute member and task counts dynamically
+	for i, p := range projects {
+		mc, _ := m.members.CountDocuments(ctx, bson.M{"project_id": p.ID})
+		tc, _ := m.tasks.CountDocuments(ctx, bson.M{"project_id": p.ID})
+		projects[i].MemberCount = int(mc)
+		projects[i].TaskCount = int(tc)
+	}
+
 	return projects, int(totalCount), nil
 }
 
@@ -159,6 +172,22 @@ func (m *MongoProjectRepository) RemoveMember(ctx context.Context, projectID, us
 	_, err := m.members.DeleteOne(ctx, bson.M{"project_id": projectID, "user_id": userID})
 	if err != nil {
 		m.logger.Error("repo: remove project member", "error", err, "project_id", projectID, "user_id", userID)
+	}
+	return err
+}
+
+func (m *MongoProjectRepository) IncrementMemberCount(ctx context.Context, projectID string, delta int) error {
+	_, err := m.collection.UpdateOne(ctx, bson.M{"_id": projectID}, bson.M{"$inc": bson.M{"member_count": delta}})
+	if err != nil {
+		m.logger.Error("repo: increment member count", "error", err, "project_id", projectID, "delta", delta)
+	}
+	return err
+}
+
+func (m *MongoProjectRepository) IncrementTaskCount(ctx context.Context, projectID string, delta int) error {
+	_, err := m.collection.UpdateOne(ctx, bson.M{"_id": projectID}, bson.M{"$inc": bson.M{"task_count": delta}})
+	if err != nil {
+		m.logger.Error("repo: increment task count", "error", err, "project_id", projectID, "delta", delta)
 	}
 	return err
 }
