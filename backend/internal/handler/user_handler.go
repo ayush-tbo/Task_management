@@ -293,8 +293,8 @@ func (h *UserHandler) AllUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(users) == 0 {
-		middleware.WriteJSON(w, http.StatusOK, map[string]any{"data": []model.User{}})
+		middleware.WriteJSON(w, http.StatusOK, map[string]any{"users": []model.User{}})
 		return
 	}
-	middleware.WriteJSON(w, http.StatusOK, map[string]any{"data": users})
+	middleware.WriteJSON(w, http.StatusOK, map[string]any{"users": users})
 }

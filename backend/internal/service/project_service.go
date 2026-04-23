@@ -85,3 +85,11 @@ func (s *ProjectService) RemoveMember(ctx context.Context, projectID, userID str
 	}
 	return err
 }
+
+func (s *ProjectService) IncrementMemberCount(ctx context.Context, projectID string, delta int) error {
+	return s.repo.IncrementMemberCount(ctx, projectID, delta)
+}
+
+func (s *ProjectService) IncrementTaskCount(ctx context.Context, projectID string, delta int) error {
+	return s.repo.IncrementTaskCount(ctx, projectID, delta)
+}

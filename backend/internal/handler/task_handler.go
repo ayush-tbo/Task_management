@@ -131,6 +131,8 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = h.projectService.IncrementTaskCount(r.Context(), projectID, 1)
+
 	h.logger.Info("task created", "task_id", task.ID, "title", task.Title, "project_id", projectID, "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
@@ -302,6 +304,8 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info("task deleted", "task_id", taskID, "title", task.Title, "project_id", task.ProjectID, "user_id", user.ID, "user_name", user.Name)
 
+	_ = h.projectService.IncrementTaskCount(r.Context(), task.ProjectID, -1)
+
 	go func() {
 		entry := &model.ActivityEntry{
 			ID:        primitive.NewObjectID().Hex(),
@@ -354,11 +358,10 @@ func (h *TaskHandler) AssignTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.AssigneeID == "" {
-		middleware.WriteError(w, http.StatusBadRequest, "bad request", "assignee_id is required")
-		return
+		task.AssigneeID = nil
+	} else {
+		task.AssigneeID = &req.AssigneeID
 	}
-
-	task.AssigneeID = &req.AssigneeID
 	task.UpdatedAt = time.Now()
 
 	err = h.taskService.Update(r.Context(), task)

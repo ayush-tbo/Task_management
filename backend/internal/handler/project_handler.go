@@ -17,14 +17,16 @@ type ProjectHandler struct {
 	projectService  *service.ProjectService
 	taskService     *service.TaskService
 	activityService *service.ActivityService
+	userService     *service.UserService
 	logger          *slog.Logger
 }
 
-func NewProjectHandler(projectService *service.ProjectService, taskService *service.TaskService, activityService *service.ActivityService, logger *slog.Logger) *ProjectHandler {
+func NewProjectHandler(projectService *service.ProjectService, taskService *service.TaskService, activityService *service.ActivityService, userService *service.UserService, logger *slog.Logger) *ProjectHandler {
 	return &ProjectHandler{
 		projectService:  projectService,
 		taskService:     taskService,
 		activityService: activityService,
+		userService:     userService,
 		logger:          logger,
 	}
 }
@@ -310,10 +312,21 @@ func (h *ProjectHandler) AddProjectMember(w http.ResponseWriter, r *http.Request
 		role = model.RoleMember
 	}
 
+	// Look up the user to populate name/email/avatar
+	userInfo, err := h.userService.FindByID(r.Context(), req.UserID)
+	if err != nil || userInfo == nil {
+		h.logger.Error("find user for member", "error", err, "user_id", req.UserID)
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "user not found")
+		return
+	}
+
 	member := &model.ProjectMember{
-		UserID:   req.UserID,
-		Role:     role,
-		JoinedAt: time.Now(),
+		UserID:    req.UserID,
+		Name:      userInfo.Name,
+		Email:     userInfo.Email,
+		AvatarURL: userInfo.AvatarURL,
+		Role:      role,
+		JoinedAt:  time.Now(),
 	}
 
 	err = h.projectService.AddMember(r.Context(), projectID, member)
@@ -322,6 +335,8 @@ func (h *ProjectHandler) AddProjectMember(w http.ResponseWriter, r *http.Request
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not add member")
 		return
 	}
+
+	_ = h.projectService.IncrementMemberCount(r.Context(), projectID, 1)
 
 	go func() {
 		entry := &model.ActivityEntry{
@@ -384,6 +399,8 @@ func (h *ProjectHandler) RemoveProjectMember(w http.ResponseWriter, r *http.Requ
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not remove member")
 		return
 	}
+
+	_ = h.projectService.IncrementMemberCount(r.Context(), projectID, -1)
 
 	go func() {
 		entry := &model.ActivityEntry{
