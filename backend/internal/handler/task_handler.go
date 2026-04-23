@@ -15,20 +15,22 @@ import (
 )
 
 type TaskHandler struct {
-	taskService     *service.TaskService
-	projectService  *service.ProjectService
-	commentService  *service.CommentService
-	activityService *service.ActivityService
-	logger          *slog.Logger
+	taskService         *service.TaskService
+	projectService      *service.ProjectService
+	commentService      *service.CommentService
+	activityService     *service.ActivityService
+	notificationService *service.NotificationService
+	logger              *slog.Logger
 }
 
-func NewTaskHandler(taskService *service.TaskService, projectService *service.ProjectService, commentService *service.CommentService, activityService *service.ActivityService, logger *slog.Logger) *TaskHandler {
+func NewTaskHandler(taskService *service.TaskService, projectService *service.ProjectService, commentService *service.CommentService, activityService *service.ActivityService, notificationService *service.NotificationService, logger *slog.Logger) *TaskHandler {
 	return &TaskHandler{
-		taskService:     taskService,
-		projectService:  projectService,
-		commentService:  commentService,
-		activityService: activityService,
-		logger:          logger,
+		taskService:         taskService,
+		projectService:      projectService,
+		commentService:      commentService,
+		activityService:     activityService,
+		notificationService: notificationService,
+		logger:              logger,
 	}
 }
 
@@ -136,13 +138,25 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	h.logger.Info("task created", "task_id", task.ID, "title", task.Title, "project_id", projectID, "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
+		// Notify assignee when task is created with them assigned
+		if task.AssigneeID != nil && *task.AssigneeID != "" && *task.AssigneeID != user.ID {
+			refType := "task"
+			n := &model.Notification{
+				ID:            primitive.NewObjectID().Hex(),
+				UserID:        *task.AssigneeID,
+				Type:          model.NotifAssignment,
+				Title:         "Task Assigned",
+				Message:       user.Name + " assigned you to \"" + task.Title + "\"",
+				ReferenceType: &refType,
+				ReferenceID:   &task.ID,
+				CreatedAt:     time.Now(),
+			}
+			if err := h.notificationService.Create(context.Background(), n); err != nil {
+				h.logger.Error("notification create failed", "error", err)
+			}
+		}
+
 		entry := &model.ActivityEntry{
-			ID:        primitive.NewObjectID().Hex(),
-			ProjectID: projectID,
-			TaskID:    &task.ID,
-			UserID:    user.ID,
-			User:      user,
-			Action:    model.ActionTaskCreated,
 			Details:   map[string]interface{}{"task_title": task.Title},
 			CreatedAt: time.Now(),
 		}
@@ -209,6 +223,12 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Track old assignee to detect changes
+	oldAssigneeID := ""
+	if task.AssigneeID != nil {
+		oldAssigneeID = *task.AssigneeID
+	}
+
 	if req.Title != nil {
 		task.Title = *req.Title
 	}
@@ -245,6 +265,28 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	h.logger.Info("task updated", "task_id", taskID, "title", task.Title, "project_id", task.ProjectID, "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
+		// Notify new assignee if assignee changed
+		newAssigneeID := ""
+		if task.AssigneeID != nil {
+			newAssigneeID = *task.AssigneeID
+		}
+		if newAssigneeID != oldAssigneeID && newAssigneeID != "" && newAssigneeID != user.ID {
+			refType := "task"
+			n := &model.Notification{
+				ID:            primitive.NewObjectID().Hex(),
+				UserID:        newAssigneeID,
+				Type:          model.NotifAssignment,
+				Title:         "Task Assigned",
+				Message:       user.Name + " assigned you to \"" + task.Title + "\"",
+				ReferenceType: &refType,
+				ReferenceID:   &task.ID,
+				CreatedAt:     time.Now(),
+			}
+			if err := h.notificationService.Create(context.Background(), n); err != nil {
+				h.logger.Error("notification create failed", "error", err)
+			}
+		}
+
 		entry := &model.ActivityEntry{
 			ID:        primitive.NewObjectID().Hex(),
 			ProjectID: task.ProjectID,
@@ -374,6 +416,24 @@ func (h *TaskHandler) AssignTask(w http.ResponseWriter, r *http.Request) {
 	h.logger.Info("task assigned", "task_id", taskID, "assignee_id", req.AssigneeID, "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
+		// Notify the assignee (if assigning, not unassigning, and not self-assigning)
+		if req.AssigneeID != "" && req.AssigneeID != user.ID {
+			refType := "task"
+			n := &model.Notification{
+				ID:            primitive.NewObjectID().Hex(),
+				UserID:        req.AssigneeID,
+				Type:          model.NotifAssignment,
+				Title:         "Task Assigned",
+				Message:       user.Name + " assigned you to \"" + task.Title + "\"",
+				ReferenceType: &refType,
+				ReferenceID:   &task.ID,
+				CreatedAt:     time.Now(),
+			}
+			if err := h.notificationService.Create(context.Background(), n); err != nil {
+				h.logger.Error("notification create failed", "error", err)
+			}
+		}
+
 		entry := &model.ActivityEntry{
 			ID:        primitive.NewObjectID().Hex(),
 			ProjectID: task.ProjectID,
@@ -438,6 +498,35 @@ func (h *TaskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	h.logger.Info("task status changed", "task_id", taskID, "new_status", string(req.Status), "user_id", user.ID, "user_name", user.Name)
 
 	go func() {
+		// Notify reporter and assignee about status change
+		refType := "task"
+		notified := map[string]bool{user.ID: true}
+		notify := func(targetUserID string) {
+			if notified[targetUserID] {
+				return
+			}
+			notified[targetUserID] = true
+			n := &model.Notification{
+				ID:            primitive.NewObjectID().Hex(),
+				UserID:        targetUserID,
+				Type:          model.NotifAlert,
+				Title:         "Status Updated",
+				Message:       user.Name + " changed \"" + task.Title + "\" to " + string(req.Status),
+				ReferenceType: &refType,
+				ReferenceID:   &task.ID,
+				CreatedAt:     time.Now(),
+			}
+			if err := h.notificationService.Create(context.Background(), n); err != nil {
+				h.logger.Error("notification create failed", "error", err)
+			}
+		}
+		if task.ReporterID != "" {
+			notify(task.ReporterID)
+		}
+		if task.AssigneeID != nil && *task.AssigneeID != "" {
+			notify(*task.AssigneeID)
+		}
+
 		entry := &model.ActivityEntry{
 			ID:        primitive.NewObjectID().Hex(),
 			ProjectID: task.ProjectID,
@@ -524,6 +613,13 @@ func (h *TaskHandler) LogTaskTime(w http.ResponseWriter, r *http.Request) {
 		task.TimeTracking = &model.TimeTracking{}
 	}
 	task.TimeTracking.LoggedHours += req.Hours
+	task.TimeTracking.Entries = append(task.TimeTracking.Entries, model.TimeEntry{
+		Hours:       req.Hours,
+		Description: req.Description,
+		UserID:      user.ID,
+		UserName:    user.Name,
+		CreatedAt:   time.Now(),
+	})
 	task.UpdatedAt = time.Now()
 
 	err = h.taskService.Update(r.Context(), task)

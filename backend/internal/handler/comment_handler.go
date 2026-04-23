@@ -14,16 +14,20 @@ import (
 )
 
 type CommentHandler struct {
-	commentService *service.CommentService
-	activity       *service.ActivityService
-	logger         *slog.Logger
+	commentService      *service.CommentService
+	taskService         *service.TaskService
+	activity            *service.ActivityService
+	notificationService *service.NotificationService
+	logger              *slog.Logger
 }
 
-func NewCommentHandler(commentService *service.CommentService, activity *service.ActivityService, logger *slog.Logger) *CommentHandler {
+func NewCommentHandler(commentService *service.CommentService, taskService *service.TaskService, activity *service.ActivityService, notificationService *service.NotificationService, logger *slog.Logger) *CommentHandler {
 	return &CommentHandler{
-		commentService: commentService,
-		activity:       activity,
-		logger:         logger,
+		commentService:      commentService,
+		taskService:         taskService,
+		activity:            activity,
+		notificationService: notificationService,
+		logger:              logger,
 	}
 }
 
@@ -90,6 +94,40 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.logger.Info("comment created", "comment_id", comment.ID, "task_id", taskID, "user_id", user.ID, "user_name", user.Name)
+
+	// Notify task reporter and assignee about the new comment
+	go func() {
+		task, err := h.taskService.FindByID(context.Background(), taskID)
+		if err == nil && task != nil {
+			refType := "task"
+			notified := map[string]bool{user.ID: true}
+			notify := func(targetUserID string) {
+				if notified[targetUserID] {
+					return
+				}
+				notified[targetUserID] = true
+				n := &model.Notification{
+					ID:            primitive.NewObjectID().Hex(),
+					UserID:        targetUserID,
+					Type:          model.NotifMention,
+					Title:         "New Comment",
+					Message:       user.Name + " commented on \"" + task.Title + "\"",
+					ReferenceType: &refType,
+					ReferenceID:   &task.ID,
+					CreatedAt:     time.Now(),
+				}
+				if err := h.notificationService.Create(context.Background(), n); err != nil {
+					h.logger.Error("notification create failed", "error", err)
+				}
+			}
+			if task.ReporterID != "" {
+				notify(task.ReporterID)
+			}
+			if task.AssigneeID != nil && *task.AssigneeID != "" {
+				notify(*task.AssigneeID)
+			}
+		}
+	}()
 
 	activity := &model.ActivityEntry{
 		ID:        primitive.NewObjectID().Hex(),

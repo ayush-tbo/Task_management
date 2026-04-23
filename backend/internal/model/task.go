@@ -124,10 +124,19 @@ type Task struct {
 }
 
 type TimeTracking struct {
-	EstimatedHours  float64 `json:"estimated_hours" bson:"estimated_hours"`
-	LoggedHours     float64 `json:"logged_hours" bson:"logged_hours"`
-	IsOverdue       bool    `json:"is_overdue" bson:"-"`
-	OverdueDuration *string `json:"overdue_duration,omitempty" bson:"-"`
+	EstimatedHours  float64     `json:"estimated_hours" bson:"estimated_hours"`
+	LoggedHours     float64     `json:"logged_hours" bson:"logged_hours"`
+	Entries         []TimeEntry `json:"entries" bson:"entries"`
+	IsOverdue       bool        `json:"is_overdue" bson:"-"`
+	OverdueDuration *string     `json:"overdue_duration,omitempty" bson:"-"`
+}
+
+type TimeEntry struct {
+	Hours       float64   `json:"hours" bson:"hours"`
+	Description string    `json:"description,omitempty" bson:"description,omitempty"`
+	UserID      string    `json:"user_id" bson:"user_id"`
+	UserName    string    `json:"user_name" bson:"user_name"`
+	CreatedAt   time.Time `json:"created_at" bson:"created_at"`
 }
 
 // stored in a separate mongo collection

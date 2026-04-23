@@ -53,7 +53,7 @@ func (h *NotificationHandler) MarkNotificationRead(w http.ResponseWriter, r *htt
 		return
 	}
 
-	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
+	middleware.WriteJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
 func (h *NotificationHandler) MarkAllNotificationsRead(w http.ResponseWriter, r *http.Request) {
@@ -70,5 +70,5 @@ func (h *NotificationHandler) MarkAllNotificationsRead(w http.ResponseWriter, r 
 		return
 	}
 
-	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
+	middleware.WriteJSON(w, http.StatusOK, map[string]any{"success": true})
 }
