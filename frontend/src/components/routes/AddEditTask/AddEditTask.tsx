@@ -5,9 +5,11 @@ import Footer from "../Header/Footer";
 
 function AddEditTask() {
     return (
-        <div>
+        <div className="min-h-screen flex flex-col">
             <Header />
-            <TaskForm />
+            <div className="flex-1">
+                <TaskForm />
+            </div>
             <Footer />
         </div>
     );

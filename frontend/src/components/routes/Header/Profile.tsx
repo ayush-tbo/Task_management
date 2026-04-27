@@ -42,7 +42,7 @@ function Profile() {
     const handleUpdateProfile = async (data: any) => {
         setUpdateError(null);
         try{
-            const res = await axios.patch(`http://localhost:8080/api/users/${user.id}`, data);
+            const res = await axios.patch(`/api/users/${user.id}`, data);
             login(localStorage.getItem("token") || "", res.data.user);
             setOpen(false);
         }
