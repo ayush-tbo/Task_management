@@ -30,7 +30,7 @@ function Register() {
 
     const onSubmit = async (data : any) => {
         try{
-            const res = await axios.post("http://localhost:8080/api/users/register", data);
+            const res = await axios.post("/api/users/register", data);
             login(res.data.token, res.data.user);
             navigate(`/dashboard`)
         }
@@ -46,9 +46,9 @@ function Register() {
     };
 
     return (
-        <div>
+        <div className="min-h-screen flex flex-col">
             <Header />
-            <div className="pt-31 pb-12 px-105">
+            <div className="pt-24 pb-12 px-4 flex justify-center flex-1">
                 <Card className="w-full max-w-sm">
                     <CardHeader>
                         <CardTitle>Create New Account</CardTitle>
@@ -82,7 +82,7 @@ function Register() {
                                 </div>
                                 <div className="grid gap-2 pb-2">
                                     <Label htmlFor="password">Create Your Password</Label>
-                                    <Input id="password" {...register("password")} />
+                                    <Input id="password" type="password" {...register("password")} />
                                     {errors.password && (
                                         <p className="text-sm text-red-500">{errors.password.message}</p>
                                     )}

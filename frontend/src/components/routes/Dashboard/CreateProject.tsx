@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { projectNameSchema } from "@/lib/schema";
@@ -15,13 +16,14 @@ function CreateProject({open, setOpen, onCreated}: any) {
         resolver:zodResolver(projectNameSchema),
         defaultValues:{
             name: "",
+            description: "",
         },
     });
 
     const onSubmit = async (data: any) => {
         try{
             console.log("Form data:", data);
-            const res = await axios.post("http://localhost:8080/api/projects", data);
+            const res = await axios.post("/api/projects", data);
             reset();
             setOpen(false);
             onCreated?.();
@@ -53,6 +55,10 @@ function CreateProject({open, setOpen, onCreated}: any) {
                             {errors.name && (
                                 <p className="text-sm text-red-500">{errors.name.message}</p>
                             )}
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="description" className="block text-sm font-medium">Description</label>
+                            <Textarea id="description" placeholder="What is this project about?" {...register("description")} />
                         </div>
                         <DialogFooter>
                             <DialogClose asChild>

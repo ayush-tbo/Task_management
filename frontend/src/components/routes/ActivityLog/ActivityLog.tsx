@@ -12,10 +12,10 @@ function ActivityLog(){
     const taskId = searchParams.get("taskId");
 
     return (
-        <div>
+        <div className="min-h-screen flex flex-col">
             <Header />
-            <div className="px-4 py-20">
-                <h1 className="text-6xl font-bold gradient-title mb-4">
+            <div className="px-4 py-20 flex-1">
+                <h1 className="text-3xl sm:text-5xl font-bold gradient-title mb-4">
                     {taskId ? "Task History" : "Project Activity Log"}
                 </h1>
                 <Entries projectId={projectId || undefined} taskId={taskId || undefined} />

@@ -5,9 +5,11 @@ import Lander from "./Lander";
 
 function Home() {
     return (
-        <div>
+        <div className="min-h-screen flex flex-col">
             <Header />
-            <Lander />
+            <div className="flex-1">
+                <Lander />
+            </div>
             <Footer />
         </div>
     )

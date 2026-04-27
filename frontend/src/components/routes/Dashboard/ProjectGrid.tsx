@@ -10,7 +10,7 @@ function ProjectGrid() {
 
     const fetchProjects = async () => {
         try {
-            const res = await axios.get("http://localhost:8080/api/projects");
+            const res = await axios.get("/api/projects");
             // console.log(res.data.data);
             setProjects(res.data.data || []);
         } catch (err) {
