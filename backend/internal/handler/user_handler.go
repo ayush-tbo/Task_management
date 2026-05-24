@@ -10,6 +10,7 @@ import (
 
 	"github.com/floqast/task-management/backend/internal/middleware"
 	"github.com/floqast/task-management/backend/internal/model"
+	"github.com/floqast/task-management/backend/internal/model/dto"
 	"github.com/floqast/task-management/backend/internal/service"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -52,7 +53,7 @@ func MatchUserPassword(p *model.Password, plaintextpassword string) (bool, error
 	return true, nil
 }
 
-func (h *UserHandler) validateRegisterRequest(req *model.RegisterUserRequest) error {
+func (h *UserHandler) validateRegisterRequest(req *dto.RegisterUserRequest) error {
 	if req.Name == "" {
 		return errors.New("username is required")
 	}
@@ -73,7 +74,7 @@ func (h *UserHandler) validateRegisterRequest(req *model.RegisterUserRequest) er
 }
 
 func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	var req model.RegisterUserRequest
+	var req dto.RegisterUserRequest
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -150,7 +151,7 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
-	var req model.LoginUserRequest
+	var req dto.LoginUserRequest
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -249,7 +250,7 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// At this point we can assume we are able to find existing user
-	var input model.UpdateUserRequest
+	var input dto.UpdateUserRequest
 	err = json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		h.logger.Error("decodingUpdateRequest", "error", err)

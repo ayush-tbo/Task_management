@@ -37,6 +37,11 @@ func NewApplication() (*Application, error) {
 		Level: slog.LevelInfo,
 	}))
 
+	if err := repository.EnsureIndexes(mongoDB, logger); err != nil {
+		logger.Error("failed to ensure database indexes", "error", err)
+		return nil, err
+	}
+
 	// our repositories will go here
 	userRepository := repository.NewMongoUserRepository(mongoDB, logger)
 	commentRepository := repository.NewMongoCommentRepository(mongoDB, logger)
@@ -49,23 +54,23 @@ func NewApplication() (*Application, error) {
 
 	// our services will go here
 	userService := service.NewUserService(userRepository, logger)
-	commentService := service.NewCommentService(commentRepository, activityRepository, logger)
-	projectService := service.NewProjectService(projectRepository, activityRepository, logger)
-	taskService := service.NewTaskService(taskRepository, logger)
 	activityService := service.NewActivityService(activityRepository, logger)
 	notificationService := service.NewNotificationService(notificationRepository, logger)
-	sprintService := service.NewSprintService(sprintRepository, activityRepository, logger)
+	commentService := service.NewCommentService(commentRepository, taskRepository, activityRepository, notificationRepository, logger)
+	projectService := service.NewProjectService(projectRepository, userRepository, activityRepository, notificationRepository, mongoDB, logger)
+	taskService := service.NewTaskService(taskRepository, commentRepository, projectRepository, activityRepository, notificationRepository, mongoDB, logger)
+	sprintService := service.NewSprintService(sprintRepository, taskRepository, activityRepository, mongoDB, logger)
 	labelService := service.NewLabelService(labelRepository, activityRepository, logger)
 
 	//handlers will go here
 	middlewareHandler := middleware.UserMiddleware{UserService: *userService}
-	commentHandler := handler.NewCommentHandler(commentService, taskService, activityService, notificationService, logger)
-	projectHandler := handler.NewProjectHandler(projectService, taskService, activityService, userService, notificationService, logger)
-	taskHandler := handler.NewTaskHandler(taskService, projectService, commentService, activityService, notificationService, logger)
+	commentHandler := handler.NewCommentHandler(commentService, logger)
+	projectHandler := handler.NewProjectHandler(projectService, taskService, logger)
+	taskHandler := handler.NewTaskHandler(taskService, projectService, logger)
 	userHandler := handler.NewUserHandler(userService, logger)
 	activityHandler := handler.NewActivityHandler(activityService, logger)
 	notificationHandler := handler.NewNotificationHandler(notificationService, logger)
-	sprintHandler := handler.NewSprintHandler(sprintService, taskService, logger)
+	sprintHandler := handler.NewSprintHandler(sprintService, logger)
 	labelHandler := handler.NewLabelHandler(labelService, logger)
 
 	app := &Application{

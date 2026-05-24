@@ -1,16 +1,38 @@
 package app
 
 import (
+	"fmt"
+	"net/http"
+
 	"github.com/floqast/task-management/backend/internal/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
-func SetupRoutes(app *Application) *chi.Mux {
-
+// SetupRouter builds the chi router with all middleware, CORS, swagger, and API routes,
+// and returns the final http.Handler ready for the server.
+func SetupRouter(app *Application, port string) http.Handler {
 	r := chi.NewRouter()
 
 	// log every request: method, path, user, status, duration
 	r.Use(middleware.RequestLogger(app.Logger))
+
+	// health check
+	r.Get("/api/hello", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintln(w, `{"message":"Hello from Chi backend!"}`)
+	})
+
+	// swagger
+	r.Get("/swagger/doc.yaml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-yaml")
+		http.ServeFile(w, r, "docs/swagger.yaml")
+	})
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.yaml"),
+	))
+	app.Logger.Info("swagger ui available", "url", fmt.Sprintf("http://localhost:%s/swagger/", port))
 
 	// Auth routes
 	r.Post("/api/users/register", app.UserHandler.RegisterUser)
@@ -77,5 +99,15 @@ func SetupRoutes(app *Application) *chi.Mux {
 		r.Delete("/api/sprints/{id}/tasks", app.Middleware.RequireUser(app.SprintHandler.RemoveTaskFromSprint))
 	})
 
-	return r
+	// Wrap with CORS
+	corsMiddleware := cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	})
+
+	return corsMiddleware(r)
 }
