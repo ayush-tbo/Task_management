@@ -2,23 +2,36 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/floqast/task-management/backend/internal/model"
 	"github.com/floqast/task-management/backend/internal/repository"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type SprintService struct {
-	repo     repository.SprintRepository
-	activity repository.ActivityRepository
-	logger   *slog.Logger
+	repo        repository.SprintRepository
+	taskRepo    repository.TaskRepository
+	activity    repository.ActivityRepository
+	mongoClient *mongo.Client
+	logger      *slog.Logger
 }
 
-func NewSprintService(repo repository.SprintRepository, activity repository.ActivityRepository, logger *slog.Logger) *SprintService {
+func NewSprintService(
+	repo repository.SprintRepository,
+	taskRepo repository.TaskRepository,
+	activity repository.ActivityRepository,
+	mongoClient *mongo.Client,
+	logger *slog.Logger,
+) *SprintService {
 	return &SprintService{
-		repo:     repo,
-		activity: activity,
-		logger:   logger,
+		repo:        repo,
+		taskRepo:    taskRepo,
+		activity:    activity,
+		mongoClient: mongoClient,
+		logger:      logger,
 	}
 }
 
@@ -62,18 +75,66 @@ func (s *SprintService) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-func (s *SprintService) AddTask(ctx context.Context, sprintID, taskID string) error {
-	err := s.repo.AddTask(ctx, sprintID, taskID)
+func (s *SprintService) AddTaskToSprint(ctx context.Context, sprintID string, taskID string) error {
+	task, err := s.taskRepo.FindByID(ctx, taskID)
 	if err != nil {
-		s.logger.Error("service: add task to sprint", "error", err, "sprint_id", sprintID, "task_id", taskID)
+		return err
+	}
+	if task == nil {
+		return fmt.Errorf("task not found: %s", taskID)
+	}
+
+	session, err := s.mongoClient.StartSession()
+	if err != nil {
+		return err
+	}
+	defer session.EndSession(ctx)
+
+	_, err = session.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		task.SprintID = &sprintID
+		task.UpdatedAt = time.Now()
+		if err := s.taskRepo.Update(ctx, task); err != nil {
+			return nil, err
+		}
+		if err := s.repo.AddTask(ctx, sprintID, task.ID); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	})
+	if err != nil {
+		s.logger.Error("service: add task to sprint transaction", "error", err, "sprint_id", sprintID, "task_id", task.ID)
 	}
 	return err
 }
 
-func (s *SprintService) RemoveTask(ctx context.Context, sprintID, taskID string) error {
-	err := s.repo.RemoveTask(ctx, sprintID, taskID)
+func (s *SprintService) RemoveTaskFromSprint(ctx context.Context, sprintID string, taskID string) error {
+	task, err := s.taskRepo.FindByID(ctx, taskID)
 	if err != nil {
-		s.logger.Error("service: remove task from sprint", "error", err, "sprint_id", sprintID, "task_id", taskID)
+		return err
+	}
+	if task == nil {
+		return fmt.Errorf("task not found: %s", taskID)
+	}
+
+	session, err := s.mongoClient.StartSession()
+	if err != nil {
+		return err
+	}
+	defer session.EndSession(ctx)
+
+	_, err = session.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		task.SprintID = nil
+		task.UpdatedAt = time.Now()
+		if err := s.taskRepo.Update(ctx, task); err != nil {
+			return nil, err
+		}
+		if err := s.repo.RemoveTask(ctx, sprintID, task.ID); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	})
+	if err != nil {
+		s.logger.Error("service: remove task from sprint transaction", "error", err, "sprint_id", sprintID, "task_id", task.ID)
 	}
 	return err
 }

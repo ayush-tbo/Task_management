@@ -8,6 +8,7 @@ import (
 
 	"github.com/floqast/task-management/backend/internal/middleware"
 	"github.com/floqast/task-management/backend/internal/model"
+	"github.com/floqast/task-management/backend/internal/model/dto"
 	"github.com/floqast/task-management/backend/internal/service"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -56,7 +57,7 @@ func (h *LabelHandler) CreateLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req model.CreateLabelRequest
+	var req dto.CreateLabelRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		h.logger.Error("decode create label request", "error", err)
@@ -112,7 +113,7 @@ func (h *LabelHandler) UpdateLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req model.CreateLabelRequest
+	var req dto.CreateLabelRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		h.logger.Error("decode update label request", "error", err)

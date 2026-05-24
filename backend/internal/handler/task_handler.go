@@ -1,36 +1,28 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/floqast/task-management/backend/internal/middleware"
 	"github.com/floqast/task-management/backend/internal/model"
+	"github.com/floqast/task-management/backend/internal/model/dto"
 	"github.com/floqast/task-management/backend/internal/repository"
 	"github.com/floqast/task-management/backend/internal/service"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type TaskHandler struct {
-	taskService         *service.TaskService
-	projectService      *service.ProjectService
-	commentService      *service.CommentService
-	activityService     *service.ActivityService
-	notificationService *service.NotificationService
-	logger              *slog.Logger
+	taskService    *service.TaskService
+	projectService *service.ProjectService
+	logger         *slog.Logger
 }
 
-func NewTaskHandler(taskService *service.TaskService, projectService *service.ProjectService, commentService *service.CommentService, activityService *service.ActivityService, notificationService *service.NotificationService, logger *slog.Logger) *TaskHandler {
+func NewTaskHandler(taskService *service.TaskService, projectService *service.ProjectService, logger *slog.Logger) *TaskHandler {
 	return &TaskHandler{
-		taskService:         taskService,
-		projectService:      projectService,
-		commentService:      commentService,
-		activityService:     activityService,
-		notificationService: notificationService,
-		logger:              logger,
+		taskService:    taskService,
+		projectService: projectService,
+		logger:         logger,
 	}
 }
 
@@ -53,9 +45,9 @@ func (h *TaskHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	totalPages := (total + pageSize - 1) / pageSize
-	middleware.WriteJSON(w, http.StatusOK, model.PaginatedResponse[model.Task]{
+	middleware.WriteJSON(w, http.StatusOK, dto.PaginatedResponse[model.Task]{
 		Data: tasks,
-		Pagination: model.Pagination{
+		Pagination: dto.Pagination{
 			Page:       page,
 			PageSize:   pageSize,
 			TotalItems: total,
@@ -73,14 +65,12 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	projectID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Error("invalid project id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid project id")
 		return
 	}
 
 	project, err := h.projectService.FindByID(r.Context(), projectID)
 	if err != nil {
-		h.logger.Error("find project", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve project")
 		return
 	}
@@ -89,10 +79,9 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req model.CreateTaskRequest
+	var req dto.CreateTaskRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Error("decode create task request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -101,70 +90,13 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := req.Status
-	if status == "" {
-		status = model.StatusTodo
-	}
-	priority := req.Priority
-	if priority == "" {
-		priority = model.PriorityP3
-	}
-
-	task := &model.Task{
-		ID:          primitive.NewObjectID().Hex(),
-		ProjectID:   projectID,
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      status,
-		Priority:    priority,
-		DueDate:     req.DueDate,
-		AssigneeID:  req.AssigneeID,
-		ReporterID:  user.ID,
-		LabelIDs:    req.LabelIDs,
-		SprintID:    req.SprintID,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
-
-	err = h.taskService.Create(r.Context(), task)
+	task, err := h.taskService.CreateTask(r.Context(), user, projectID, req)
 	if err != nil {
-		h.logger.Error("create task failed", "error", err, "project_id", projectID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not create task")
 		return
 	}
 
-	_ = h.projectService.IncrementTaskCount(r.Context(), projectID, 1)
-
-	h.logger.Info("task created", "task_id", task.ID, "title", task.Title, "project_id", projectID, "user_id", user.ID, "user_name", user.Name)
-
-	go func() {
-		// Notify assignee when task is created with them assigned
-		if task.AssigneeID != nil && *task.AssigneeID != "" && *task.AssigneeID != user.ID {
-			refType := "task"
-			n := &model.Notification{
-				ID:            primitive.NewObjectID().Hex(),
-				UserID:        *task.AssigneeID,
-				Type:          model.NotifAssignment,
-				Title:         "Task Assigned",
-				Message:       user.Name + " assigned you to \"" + task.Title + "\"",
-				ReferenceType: &refType,
-				ReferenceID:   &task.ID,
-				CreatedAt:     time.Now(),
-			}
-			if err := h.notificationService.Create(context.Background(), n); err != nil {
-				h.logger.Error("notification create failed", "error", err)
-			}
-		}
-
-		entry := &model.ActivityEntry{
-			Details:   map[string]interface{}{"task_title": task.Title},
-			CreatedAt: time.Now(),
-		}
-		if err := h.activityService.Create(context.Background(), entry); err != nil {
-			h.logger.Error("activity log failed", "error", err, "task_id", task.ID)
-		}
-	}()
-
+	h.logger.Info("task created", "task_id", task.ID, "project_id", projectID, "user_id", user.ID)
 	middleware.WriteJSON(w, http.StatusCreated, map[string]any{"task": task})
 }
 
@@ -199,15 +131,20 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
-	task, err := h.taskService.FindByID(r.Context(), taskID)
+	var req dto.UpdateTaskRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Error("find task", "error", err)
-		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
+		return
+	}
+
+	task, err := h.taskService.UpdateTask(r.Context(), user, taskID, req)
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update task")
 		return
 	}
 	if task == nil {
@@ -215,93 +152,7 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req model.UpdateTaskRequest
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		h.logger.Error("decode update task request", "error", err)
-		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
-		return
-	}
-
-	// Track old assignee to detect changes
-	oldAssigneeID := ""
-	if task.AssigneeID != nil {
-		oldAssigneeID = *task.AssigneeID
-	}
-
-	if req.Title != nil {
-		task.Title = *req.Title
-	}
-	if req.Description != nil {
-		task.Description = *req.Description
-	}
-	if req.Status != nil {
-		task.Status = *req.Status
-	}
-	if req.Priority != nil {
-		task.Priority = *req.Priority
-	}
-	if req.DueDate != nil {
-		task.DueDate = req.DueDate
-	}
-	if req.AssigneeID != nil {
-		task.AssigneeID = req.AssigneeID
-	}
-	if req.LabelIDs != nil {
-		task.LabelIDs = req.LabelIDs
-	}
-	if req.SprintID != nil {
-		task.SprintID = req.SprintID
-	}
-	task.UpdatedAt = time.Now()
-
-	err = h.taskService.Update(r.Context(), task)
-	if err != nil {
-		h.logger.Error("update task failed", "error", err, "task_id", taskID, "user_id", user.ID)
-		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update task")
-		return
-	}
-
-	h.logger.Info("task updated", "task_id", taskID, "title", task.Title, "project_id", task.ProjectID, "user_id", user.ID, "user_name", user.Name)
-
-	go func() {
-		// Notify new assignee if assignee changed
-		newAssigneeID := ""
-		if task.AssigneeID != nil {
-			newAssigneeID = *task.AssigneeID
-		}
-		if newAssigneeID != oldAssigneeID && newAssigneeID != "" && newAssigneeID != user.ID {
-			refType := "task"
-			n := &model.Notification{
-				ID:            primitive.NewObjectID().Hex(),
-				UserID:        newAssigneeID,
-				Type:          model.NotifAssignment,
-				Title:         "Task Assigned",
-				Message:       user.Name + " assigned you to \"" + task.Title + "\"",
-				ReferenceType: &refType,
-				ReferenceID:   &task.ID,
-				CreatedAt:     time.Now(),
-			}
-			if err := h.notificationService.Create(context.Background(), n); err != nil {
-				h.logger.Error("notification create failed", "error", err)
-			}
-		}
-
-		entry := &model.ActivityEntry{
-			ID:        primitive.NewObjectID().Hex(),
-			ProjectID: task.ProjectID,
-			TaskID:    &task.ID,
-			UserID:    user.ID,
-			User:      user,
-			Action:    model.ActionTaskUpdated,
-			Details:   map[string]interface{}{"task_title": task.Title},
-			CreatedAt: time.Now(),
-		}
-		if err := h.activityService.Create(context.Background(), entry); err != nil {
-			h.logger.Error("activity log failed", "error", err, "task_id", task.ID)
-		}
-	}()
-
+	h.logger.Info("task updated", "task_id", taskID, "user_id", user.ID)
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"task": task})
 }
 
@@ -314,56 +165,17 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
-	task, err := h.taskService.FindByID(r.Context(), taskID)
+	err = h.taskService.DeleteTask(r.Context(), user, taskID)
 	if err != nil {
-		h.logger.Error("find task", "error", err)
-		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
-		return
-	}
-	if task == nil {
-		middleware.WriteError(w, http.StatusNotFound, "not found", "task not found")
-		return
-	}
-
-	err = h.taskService.Delete(r.Context(), taskID)
-	if err != nil {
-		h.logger.Error("delete task failed", "error", err, "task_id", taskID, "user_id", user.ID)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete task")
 		return
 	}
 
-	err = h.commentService.DeleteAll(r.Context(), taskID)
-	if err != nil {
-		h.logger.Error("delete task comments failed", "error", err, "task_id", taskID)
-		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not delete all comments of task")
-		return
-	}
-
-	h.logger.Info("task deleted", "task_id", taskID, "title", task.Title, "project_id", task.ProjectID, "user_id", user.ID, "user_name", user.Name)
-
-	_ = h.projectService.IncrementTaskCount(r.Context(), task.ProjectID, -1)
-
-	go func() {
-		entry := &model.ActivityEntry{
-			ID:        primitive.NewObjectID().Hex(),
-			ProjectID: task.ProjectID,
-			TaskID:    &taskID,
-			UserID:    user.ID,
-			User:      user,
-			Action:    model.ActionTaskDeleted,
-			Details:   map[string]interface{}{"task_title": task.Title},
-			CreatedAt: time.Now(),
-		}
-		if err := h.activityService.Create(context.Background(), entry); err != nil {
-			h.logger.Error("activity log failed", "error", err, "task_id", taskID)
-		}
-	}()
-
+	h.logger.Info("task deleted", "task_id", taskID, "user_id", user.ID)
 	middleware.WriteJSON(w, http.StatusNoContent, map[string]any{})
 }
 
@@ -376,15 +188,20 @@ func (h *TaskHandler) AssignTask(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
-	task, err := h.taskService.FindByID(r.Context(), taskID)
+	var req dto.AssignTaskRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Error("find task", "error", err)
-		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
+		return
+	}
+
+	task, err := h.taskService.AssignTask(r.Context(), user, taskID, req)
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not assign task")
 		return
 	}
 	if task == nil {
@@ -392,63 +209,7 @@ func (h *TaskHandler) AssignTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req model.AssignTaskRequest
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		h.logger.Error("decode assign task request", "error", err)
-		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
-		return
-	}
-	if req.AssigneeID == "" {
-		task.AssigneeID = nil
-	} else {
-		task.AssigneeID = &req.AssigneeID
-	}
-	task.UpdatedAt = time.Now()
-
-	err = h.taskService.Update(r.Context(), task)
-	if err != nil {
-		h.logger.Error("assign task failed", "error", err, "task_id", taskID, "assignee_id", req.AssigneeID, "user_id", user.ID)
-		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not assign task")
-		return
-	}
-
-	h.logger.Info("task assigned", "task_id", taskID, "assignee_id", req.AssigneeID, "user_id", user.ID, "user_name", user.Name)
-
-	go func() {
-		// Notify the assignee (if assigning, not unassigning, and not self-assigning)
-		if req.AssigneeID != "" && req.AssigneeID != user.ID {
-			refType := "task"
-			n := &model.Notification{
-				ID:            primitive.NewObjectID().Hex(),
-				UserID:        req.AssigneeID,
-				Type:          model.NotifAssignment,
-				Title:         "Task Assigned",
-				Message:       user.Name + " assigned you to \"" + task.Title + "\"",
-				ReferenceType: &refType,
-				ReferenceID:   &task.ID,
-				CreatedAt:     time.Now(),
-			}
-			if err := h.notificationService.Create(context.Background(), n); err != nil {
-				h.logger.Error("notification create failed", "error", err)
-			}
-		}
-
-		entry := &model.ActivityEntry{
-			ID:        primitive.NewObjectID().Hex(),
-			ProjectID: task.ProjectID,
-			TaskID:    &task.ID,
-			UserID:    user.ID,
-			User:      user,
-			Action:    model.ActionTaskAssigned,
-			Details:   map[string]interface{}{"task_title": task.Title, "assignee_id": req.AssigneeID},
-			CreatedAt: time.Now(),
-		}
-		if err := h.activityService.Create(context.Background(), entry); err != nil {
-			h.logger.Error("activity log", "error", err)
-		}
-	}()
-
+	h.logger.Info("task assigned", "task_id", taskID, "user_id", user.ID)
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"task": task})
 }
 
@@ -461,15 +222,20 @@ func (h *TaskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
-	task, err := h.taskService.FindByID(r.Context(), taskID)
+	var req dto.UpdateStatusRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Error("find task", "error", err)
-		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
+		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
+		return
+	}
+
+	task, err := h.taskService.UpdateStatus(r.Context(), user, taskID, req)
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update task status")
 		return
 	}
 	if task == nil {
@@ -477,85 +243,19 @@ func (h *TaskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req model.UpdateStatusRequest
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		h.logger.Error("decode update status request", "error", err)
-		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
-		return
-	}
-
-	task.Status = req.Status
-	task.UpdatedAt = time.Now()
-
-	err = h.taskService.Update(r.Context(), task)
-	if err != nil {
-		h.logger.Error("update task status failed", "error", err, "task_id", taskID, "new_status", req.Status, "user_id", user.ID)
-		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not update task status")
-		return
-	}
-
-	h.logger.Info("task status changed", "task_id", taskID, "new_status", string(req.Status), "user_id", user.ID, "user_name", user.Name)
-
-	go func() {
-		// Notify reporter and assignee about status change
-		refType := "task"
-		notified := map[string]bool{user.ID: true}
-		notify := func(targetUserID string) {
-			if notified[targetUserID] {
-				return
-			}
-			notified[targetUserID] = true
-			n := &model.Notification{
-				ID:            primitive.NewObjectID().Hex(),
-				UserID:        targetUserID,
-				Type:          model.NotifAlert,
-				Title:         "Status Updated",
-				Message:       user.Name + " changed \"" + task.Title + "\" to " + string(req.Status),
-				ReferenceType: &refType,
-				ReferenceID:   &task.ID,
-				CreatedAt:     time.Now(),
-			}
-			if err := h.notificationService.Create(context.Background(), n); err != nil {
-				h.logger.Error("notification create failed", "error", err)
-			}
-		}
-		if task.ReporterID != "" {
-			notify(task.ReporterID)
-		}
-		if task.AssigneeID != nil && *task.AssigneeID != "" {
-			notify(*task.AssigneeID)
-		}
-
-		entry := &model.ActivityEntry{
-			ID:        primitive.NewObjectID().Hex(),
-			ProjectID: task.ProjectID,
-			TaskID:    &task.ID,
-			UserID:    user.ID,
-			User:      user,
-			Action:    model.ActionStatusChanged,
-			Details:   map[string]interface{}{"task_title": task.Title, "new_status": string(req.Status)},
-			CreatedAt: time.Now(),
-		}
-		if err := h.activityService.Create(context.Background(), entry); err != nil {
-			h.logger.Error("activity log", "error", err)
-		}
-	}()
-
+	h.logger.Info("task status changed", "task_id", taskID, "user_id", user.ID)
 	middleware.WriteJSON(w, http.StatusOK, map[string]any{"task": task})
 }
 
 func (h *TaskHandler) GetTaskTimeTracking(w http.ResponseWriter, r *http.Request) {
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
 	task, err := h.taskService.FindByID(r.Context(), taskID)
 	if err != nil {
-		h.logger.Error("find task", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
 		return
 	}
@@ -581,26 +281,13 @@ func (h *TaskHandler) LogTaskTime(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := middleware.ReadIDParam(r)
 	if err != nil {
-		h.logger.Error("invalid task id", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid task id")
 		return
 	}
 
-	task, err := h.taskService.FindByID(r.Context(), taskID)
-	if err != nil {
-		h.logger.Error("find task", "error", err)
-		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not retrieve task")
-		return
-	}
-	if task == nil {
-		middleware.WriteError(w, http.StatusNotFound, "not found", "task not found")
-		return
-	}
-
-	var req model.LogTimeRequest
+	var req dto.LogTimeRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		h.logger.Error("decode log time request", "error", err)
 		middleware.WriteError(w, http.StatusBadRequest, "bad request", "invalid request body")
 		return
 	}
@@ -609,23 +296,13 @@ func (h *TaskHandler) LogTaskTime(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if task.TimeTracking == nil {
-		task.TimeTracking = &model.TimeTracking{}
-	}
-	task.TimeTracking.LoggedHours += req.Hours
-	task.TimeTracking.Entries = append(task.TimeTracking.Entries, model.TimeEntry{
-		Hours:       req.Hours,
-		Description: req.Description,
-		UserID:      user.ID,
-		UserName:    user.Name,
-		CreatedAt:   time.Now(),
-	})
-	task.UpdatedAt = time.Now()
-
-	err = h.taskService.Update(r.Context(), task)
+	task, err := h.taskService.LogTime(r.Context(), user, taskID, req)
 	if err != nil {
-		h.logger.Error("log time", "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "internal server error", "could not log time")
+		return
+	}
+	if task == nil {
+		middleware.WriteError(w, http.StatusNotFound, "not found", "task not found")
 		return
 	}
 
@@ -650,9 +327,9 @@ func (h *TaskHandler) GetMyTasks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	totalPages := (total + pageSize - 1) / pageSize
-	middleware.WriteJSON(w, http.StatusOK, model.PaginatedResponse[model.Task]{
+	middleware.WriteJSON(w, http.StatusOK, dto.PaginatedResponse[model.Task]{
 		Data: tasks,
-		Pagination: model.Pagination{
+		Pagination: dto.Pagination{
 			Page:       page,
 			PageSize:   pageSize,
 			TotalItems: total,

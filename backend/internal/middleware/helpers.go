@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/floqast/task-management/backend/internal/model"
+	"github.com/floqast/task-management/backend/internal/model/dto"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -17,7 +17,7 @@ func WriteJSON(w http.ResponseWriter, status int, v interface{}) {
 }
 
 func WriteError(w http.ResponseWriter, status int, err, msg string) {
-	WriteJSON(w, status, model.ErrorResponse{Error: err, Message: msg})
+	WriteJSON(w, status, dto.ErrorResponse{Error: err, Message: msg})
 }
 
 func decodeJSON(r *http.Request, v interface{}) error {

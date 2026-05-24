@@ -17,7 +17,7 @@ import Notifications from "./components/routes/Notifications/Notifications";
 import MyTasks from "./components/routes/MyTasks/MyTasks";
 import SprintDetail from "./components/routes/Project/SprintDetail";
 
-axios.defaults.baseURL = "http://localhost:8080";
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || "";
 
 // Register interceptors at module level so they are active before any component renders
 axios.interceptors.request.use((config) => {

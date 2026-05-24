@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/floqast/task-management/backend/internal/model"
+	"github.com/floqast/task-management/backend/internal/model/dto"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -19,8 +20,8 @@ type TaskRepository interface {
 	Create(ctx context.Context, task *model.Task) error
 	Update(ctx context.Context, task *model.Task) error
 	Delete(ctx context.Context, id string) error
-	CountByStatus(ctx context.Context, projectID string) ([]model.StatusChartEntry, error)
-	CountByPriority(ctx context.Context, projectID string) ([]model.PriorityChartEntry, error)
+	CountByStatus(ctx context.Context, projectID string) ([]dto.StatusChartEntry, error)
+	CountByPriority(ctx context.Context, projectID string) ([]dto.PriorityChartEntry, error)
 }
 
 type TaskFilters struct {
@@ -219,7 +220,7 @@ func (m *MongoTaskRepository) FindByAssignee(ctx context.Context, userID string,
 	return tasks, int(total), nil
 }
 
-func (m *MongoTaskRepository) CountByStatus(ctx context.Context, projectID string) ([]model.StatusChartEntry, error) {
+func (m *MongoTaskRepository) CountByStatus(ctx context.Context, projectID string) ([]dto.StatusChartEntry, error) {
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: bson.M{"project_id": projectID}}},
 		{{Key: "$group", Value: bson.M{
@@ -243,14 +244,14 @@ func (m *MongoTaskRepository) CountByStatus(ctx context.Context, projectID strin
 		return nil, err
 	}
 
-	entries := make([]model.StatusChartEntry, len(results))
+	entries := make([]dto.StatusChartEntry, len(results))
 	for i, r := range results {
-		entries[i] = model.StatusChartEntry{Status: r.Status, Count: r.Count}
+		entries[i] = dto.StatusChartEntry{Status: r.Status, Count: r.Count}
 	}
 	return entries, nil
 }
 
-func (m *MongoTaskRepository) CountByPriority(ctx context.Context, projectID string) ([]model.PriorityChartEntry, error) {
+func (m *MongoTaskRepository) CountByPriority(ctx context.Context, projectID string) ([]dto.PriorityChartEntry, error) {
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: bson.M{"project_id": projectID}}},
 		{{Key: "$group", Value: bson.M{
@@ -274,9 +275,9 @@ func (m *MongoTaskRepository) CountByPriority(ctx context.Context, projectID str
 		return nil, err
 	}
 
-	entries := make([]model.PriorityChartEntry, len(results))
+	entries := make([]dto.PriorityChartEntry, len(results))
 	for i, r := range results {
-		entries[i] = model.PriorityChartEntry{Priority: r.Priority, Count: r.Count}
+		entries[i] = dto.PriorityChartEntry{Priority: r.Priority, Count: r.Count}
 	}
 	return entries, nil
 }
