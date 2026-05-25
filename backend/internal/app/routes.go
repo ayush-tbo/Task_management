@@ -17,9 +17,6 @@ import (
 func SetupRouter(app *Application, port string) http.Handler {
 	r := chi.NewRouter()
 
-	// log every request: method, path, user, status, duration
-	r.Use(middleware.RequestLogger(app.Logger))
-
 	// health check
 	r.Get("/api/hello", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
