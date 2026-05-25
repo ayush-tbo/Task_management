@@ -42,6 +42,7 @@ func SetupRouter(app *Application, port string) http.Handler {
 
 	r.Group(func(r chi.Router) {
 		r.Use(app.Middleware.Authenticate)
+		r.Use(middleware.RequestLogger(app.Logger))
 
 		// user routes
 		r.Get("/api/users/{id}", app.Middleware.RequireUser(app.UserHandler.GetUserById))
