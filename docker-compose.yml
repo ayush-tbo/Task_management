@@ -16,6 +16,7 @@ services:
     environment:
       - PORT=8080
       - MONGODB_URI=mongodb://mongo:27017
+      - CORS_ORIGINS=http://13.207.4.151:3000,http://13.207.4.151
     depends_on:
       - mongo
     restart: unless-stopped

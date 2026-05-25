@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/floqast/task-management/backend/internal/middleware"
 	"github.com/go-chi/chi/v5"
@@ -100,8 +102,12 @@ func SetupRouter(app *Application, port string) http.Handler {
 	})
 
 	// Wrap with CORS
+	allowedOrigins := []string{"http://localhost:5173", "http://localhost:3000"}
+	if extra := os.Getenv("CORS_ORIGINS"); extra != "" {
+		allowedOrigins = append(allowedOrigins, strings.Split(extra, ",")...)
+	}
 	corsMiddleware := cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000"},
+		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
