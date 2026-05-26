@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bell, LayoutDashboard, ListChecks } from "lucide-react";
+import { Bell, KanbanSquare, LayoutDashboard, ListChecks } from "lucide-react";
 import Profile from "./Profile";
 import axios from "axios";
 
@@ -27,8 +27,9 @@ function Header() {
     return (
         <div className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b">
             <nav className="flex items-center px-4 py-3 justify-between gap-2">
-                <Link to="/" className="shrink-0">
-                    <img className="size-11 w-auto opacity-100 object-contain" src="/Header/fq.png" alt="FloQast Logo" />
+                <Link to="/" className="shrink-0 flex items-center gap-2">
+                    <KanbanSquare className="size-8 text-blue-600" />
+                    <span className="hidden sm:inline text-lg font-bold text-gray-800">Task Manager</span>
                 </Link>
                 <div className="flex items-center gap-1 sm:gap-3 overflow-x-auto">
                     <Link to="/my-tasks" className="text-gray-600 hover:text-blue-800 shrink-0">
